@@ -126,14 +126,30 @@ function providerTone(result: ProviderValidationResult | null): 'neutral' | 'pos
   return 'negative';
 }
 
-function useSettingsSections(open: boolean, initialSection: SettingsSection) {
+function normalizeSections(sections: readonly SettingsSection[]): SettingsSection[] {
+  const available = SECTION_ORDER.filter((section) => sections.includes(section));
+  return available.length > 0 ? available : [...SECTION_ORDER];
+}
+
+function useSettingsSections(open: boolean, initialSection: SettingsSection, availableSections: readonly SettingsSection[]) {
   const [section, setSection] = useState<SettingsSection>(initialSection);
+  const availableSectionsKey = availableSections.join('|');
+  const availableSectionsRef = useRef(availableSections);
+
+  useEffect(() => {
+    availableSectionsRef.current = availableSections;
+  }, [availableSections, availableSectionsKey]);
 
   useEffect(() => {
     if (open) {
-      setSection(initialSection);
+      const currentAvailableSections = availableSectionsRef.current;
+      if (currentAvailableSections.includes(initialSection)) {
+        setSection(initialSection);
+      } else {
+        setSection(currentAvailableSections[0] ?? initialSection);
+      }
     }
-  }, [initialSection, open]);
+  }, [availableSections, availableSectionsKey, initialSection, open]);
 
   return { section, setSection };
 }
@@ -141,18 +157,25 @@ function useSettingsSections(open: boolean, initialSection: SettingsSection) {
 export function SettingsDrawer({
   open,
   initialSection = 'markets',
+  availableSections = SECTION_ORDER,
+  title = 'Settings',
+  description = 'Manage markets, provider credentials, appearance, quick links, and local data without reloading the page.',
   onClose,
   marketStates,
   now,
 }: {
   open: boolean;
   initialSection?: SettingsSection;
+  availableSections?: readonly SettingsSection[];
+  title?: string;
+  description?: string;
   onClose: () => void;
   marketStates: Record<string, MarketClockState>;
   now: Date;
 }) {
   const { controller, snapshot } = useExtensionStorage();
-  const { section, setSection } = useSettingsSections(open, initialSection);
+  const sections = useMemo(() => normalizeSections(availableSections), [availableSections]);
+  const { section, setSection } = useSettingsSections(open, initialSection, sections);
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -486,6 +509,7 @@ export function SettingsDrawer({
 
   const connectionStateTone = providerTone(connectionResult);
   const symbolFailureMap = new Map(symbolValidationResults.filter((result) => !result.valid).map((result) => [result.marketId, result]));
+  const showNav = sections.length > 1;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/55 p-3 sm:p-5" role="presentation">
@@ -499,43 +523,43 @@ export function SettingsDrawer({
       >
         <div className="flex items-start justify-between gap-4 border-b border-[color:var(--mw-border)] px-5 py-4 sm:px-6">
           <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Settings</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">{title}</p>
             <h2 id="settings-title" className="text-xl font-semibold text-[color:var(--mw-text)]">
               {SECTION_TITLES[section]}
             </h2>
-            <p className="max-w-2xl text-sm leading-6 text-[color:var(--mw-text-secondary)]">
-              Manage markets, provider credentials, appearance, quick links, and local data without reloading the page.
-            </p>
+            <p className="max-w-2xl text-sm leading-6 text-[color:var(--mw-text-secondary)]">{description}</p>
           </div>
           <IconButton ref={closeButtonRef} aria-label="Close settings" onClick={onClose} tone="subtle" type="button">
             <X className="h-4 w-4" />
           </IconButton>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
-          <nav aria-label="Settings sections" className="border-b border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-3 md:border-b-0 md:border-r">
-            <div className="grid gap-2">
-              {SECTION_ORDER.map((item) => (
-                <button
-                  key={item}
-                  aria-pressed={section === item}
-                  className={classNames(
-                    'flex items-center justify-between rounded-[16px] border px-3 py-3 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--mw-focus)]',
-                    section === item
-                      ? 'border-[color:var(--mw-border-strong)] bg-[color:var(--mw-panel)] text-[color:var(--mw-text)] shadow-[var(--mw-shadow-lift)]'
-                      : 'border-transparent bg-transparent text-[color:var(--mw-text-secondary)] hover:border-[color:var(--mw-border)] hover:bg-[color:var(--mw-panel)] hover:text-[color:var(--mw-text)]',
-                  )}
-                  onClick={() => setSection(item)}
-                  type="button"
-                >
-                  <span>{SECTION_TITLES[item]}</span>
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-[color:var(--mw-text-muted)]">
-                    {item === 'data' ? 'local' : item === 'provider' ? 'key' : ''}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </nav>
+        <div className="grid min-h-0 flex-1 gap-0">
+          {showNav ? (
+            <nav aria-label="Settings sections" className="border-b border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-3 md:border-b-0 md:border-r md:w-[220px]">
+              <div className="grid gap-2">
+                {sections.map((item) => (
+                  <button
+                    key={item}
+                    aria-pressed={section === item}
+                    className={classNames(
+                      'flex items-center justify-between rounded-[16px] border px-3 py-3 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--mw-focus)]',
+                      section === item
+                        ? 'border-[color:var(--mw-border-strong)] bg-[color:var(--mw-panel)] text-[color:var(--mw-text)] shadow-[var(--mw-shadow-lift)]'
+                        : 'border-transparent bg-transparent text-[color:var(--mw-text-secondary)] hover:border-[color:var(--mw-border)] hover:bg-[color:var(--mw-panel)] hover:text-[color:var(--mw-text)]',
+                    )}
+                    onClick={() => setSection(item)}
+                    type="button"
+                  >
+                    <span>{SECTION_TITLES[item]}</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-[color:var(--mw-text-muted)]">
+                      {item === 'data' ? 'local' : item === 'provider' ? 'key' : ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </nav>
+          ) : null}
 
           <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
             <div aria-labelledby="settings-title" className="grid gap-4">

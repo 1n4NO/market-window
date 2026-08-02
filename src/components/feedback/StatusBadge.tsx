@@ -11,7 +11,7 @@ export function StatusBadge({
   return (
     <span
       className={classNames(
-        'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em]',
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em]',
         tone === 'positive' &&
           'border-[color:var(--mw-positive)]/30 bg-[color:var(--mw-positive)]/10 text-[color:var(--mw-positive)]',
         tone === 'negative' &&
@@ -19,7 +19,7 @@ export function StatusBadge({
         tone === 'warning' &&
           'border-[color:var(--mw-warning)]/30 bg-[color:var(--mw-warning)]/10 text-[color:var(--mw-warning)]',
         tone === 'accent' &&
-          'border-[color:var(--mw-market-nse)]/30 bg-[color:var(--mw-market-nse)]/10 text-[color:var(--mw-market-nse)]',
+          'border-[color:var(--mw-state-pre-market)]/50 bg-[color:var(--mw-state-pre-market)]/20 text-[color:#6ea8ff]',
         tone === 'neutral' &&
           'border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] text-[color:var(--mw-text-secondary)]',
       )}

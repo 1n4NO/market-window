@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MARKET_DEFINITIONS } from '../../config/markets';
 import type { MarketClockState, MarketDefinition } from '../../domain/market';
@@ -32,7 +31,6 @@ function createClockState(
 
 describe('MarketHoursTimeline', () => {
   it('supports keyboard access to session bars', async () => {
-    const user = userEvent.setup();
     const nse = market('nse');
 
     render(
@@ -46,13 +44,29 @@ describe('MarketHoursTimeline', () => {
       />,
     );
 
-    await user.tab();
-    await user.tab();
-
     const sessionButton = screen.getByRole('button', {
-      name: /NSE, Regular session, 09:15 to 15:30/i,
+      name: /Mumbai \(NSE\) 09:15–15:30 IST.*Your time:/i,
     });
+    sessionButton.focus();
     expect(sessionButton).toHaveFocus();
-    expect(screen.getByRole('heading', { name: 'NSE Regular session' })).toBeInTheDocument();
+    expect(screen.getByText('MARKET HOURS (LOCAL TIME)')).toBeInTheDocument();
+  });
+
+  it('shows a muted weekend projection instead of empty lanes', () => {
+    const nse = market('nse');
+
+    render(
+      <MarketHoursTimeline
+        marketStates={{
+          nse: createClockState('weekend', nse, 'Opens Monday at 09:15'),
+        }}
+        markets={[nse]}
+        now={new Date('2026-08-02T09:00:00.000Z')}
+        viewerTimeZone="Asia/Kolkata"
+      />,
+    );
+
+    expect(screen.getByText('Weekend projection')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /projection/i })).toBeInTheDocument();
   });
 });

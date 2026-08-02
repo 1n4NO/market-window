@@ -145,34 +145,38 @@ describe('MarketCardsGrid', () => {
 
     const user = userEvent.setup();
 
-    render(<MarketCardsGrid cards={dashboard.cards} now={now} />);
+    const { container } = render(<MarketCardsGrid cards={dashboard.cards} now={now} />);
 
-    expect(screen.getByRole('article', { name: 'NSE market card' })).toBeInTheDocument();
-    expect(screen.getByRole('article', { name: 'TSE market card' })).toBeInTheDocument();
-    expect(screen.getByRole('article', { name: 'LSE market card' })).toBeInTheDocument();
-    expect(screen.getByRole('article', { name: 'NYSE market card' })).toBeInTheDocument();
-    expect(screen.getByRole('article', { name: 'HKEX market card' })).toBeInTheDocument();
-    expect(screen.getByRole('article', { name: 'Xetra market card' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'NSE NIFTY 50 market card' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'TSE Nikkei 225 market card' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'LSE FTSE 100 market card' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'NYSE S&P 500 market card' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'HKEX Hang Seng market card' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Xetra DAX market card' })).toBeInTheDocument();
 
-    expect(screen.getByText('Open')).toBeInTheDocument();
-    expect(screen.getAllByText('On break').length).toBeGreaterThan(0);
-    expect(screen.getByText('Closed')).toBeInTheDocument();
-    expect(screen.getByText('Pre-market')).toBeInTheDocument();
-    expect(screen.getByText('Weekend')).toBeInTheDocument();
-    expect(screen.getByText('Holiday')).toBeInTheDocument();
+    expect(screen.getAllByText('OPEN').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('ON BREAK').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('CLOSED').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('OPENS SOON').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('WEEKEND').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('HOLIDAY').length).toBeGreaterThan(0);
 
-    expect(screen.getByText('live')).toBeInTheDocument();
-    expect(screen.getByText('delayed')).toBeInTheDocument();
-    expect(screen.getByText('end of day')).toBeInTheDocument();
-    expect(screen.getByText('cached')).toBeInTheDocument();
-    expect(screen.getByText('mock')).toBeInTheDocument();
-    expect(screen.getByText('unavailable')).toBeInTheDocument();
-
-    expect(screen.getByText('Demo data')).toBeInTheDocument();
-    expect(screen.getAllByText('Data unavailable').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Cached /i).length).toBeGreaterThan(0);
+    expect(screen.getByText('24,682.35')).toBeInTheDocument();
+    expect(screen.getByText('+92.23')).toBeInTheDocument();
+    expect(screen.getByText('+0.38%')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('Unavailable')).toBeInTheDocument();
+    expect(screen.getAllByText('Next session').length).toBe(6);
+    expect(container.querySelectorAll('article svg')).toHaveLength(6);
+    expect(screen.queryByText('IN')).not.toBeInTheDocument();
+    expect(screen.queryByText('Latest session information')).not.toBeInTheDocument();
+    expect(screen.queryByText('Provider timestamp')).not.toBeInTheDocument();
+    expect(screen.queryByText('Local display')).not.toBeInTheDocument();
+    expect(screen.queryByText('Data state')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cached')).not.toBeInTheDocument();
+    expect(screen.queryByText('DEMO')).not.toBeInTheDocument();
 
     await user.tab();
-    expect(screen.getByRole('article', { name: 'NSE market card' })).toHaveFocus();
+    expect(screen.getByRole('article', { name: 'NSE NIFTY 50 market card' })).toHaveFocus();
   });
 });

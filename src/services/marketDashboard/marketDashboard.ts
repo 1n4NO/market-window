@@ -92,9 +92,22 @@ function formatMarketState(state: MarketState): string {
   }
 }
 
+function getTimeZoneAbbreviation(timeZone: string): string {
+  if (timeZone === 'Asia/Kolkata') {
+    return 'IST';
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    timeZoneName: 'short',
+  });
+  return formatter.formatToParts(new Date()).find((part) => part.type === 'timeZoneName')?.value ?? '';
+}
+
 function formatSessionHours(market: MarketDefinition): string {
+  const timeZoneAbbreviation = getTimeZoneAbbreviation(market.timezone);
   return market.sessions
-    .map((session) => `${session.label.replace(/ session$/i, '')} ${session.openTime}–${session.closeTime} ${formatInTimeZone(new Date(), market.timezone, 'zzz')}`)
+    .map((session) => `${session.label.replace(/ session$/i, '')} ${session.openTime}–${session.closeTime} ${timeZoneAbbreviation}`)
     .join(' · ');
 }
 

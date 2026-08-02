@@ -15,12 +15,15 @@ describe('App shell', () => {
   it('renders the finished dashboard shell', () => {
     render(<App />);
 
-    expect(screen.getByText('Primary index cards')).toBeInTheDocument();
-    expect(screen.getByText('Your search bar, front and center')).toBeInTheDocument();
+    expect(screen.getByText('MARKET HOURS (LOCAL TIME)')).toBeInTheDocument();
     expect(screen.getByLabelText('Search the web or enter a URL')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Markets' })).toBeInTheDocument();
-    expect(screen.getByText('Editable shortcuts')).toBeInTheDocument();
+    expect(screen.getByText('QUICK LINKS')).toBeInTheDocument();
+    expect(screen.getByText('MARKET SUMMARY')).toBeInTheDocument();
+    expect(screen.getByText('UPCOMING OPENS')).toBeInTheDocument();
+    expect(screen.getByText('All times are local to the exchange')).toBeInTheDocument();
+    expect(screen.getByText('Free/demo')).toBeInTheDocument();
   });
 
   it('focuses the search field when the slash shortcut is pressed', () => {
@@ -34,7 +37,7 @@ describe('App shell', () => {
     expect(search).toHaveFocus();
   });
 
-  it('shows offline status without hiding the dashboard shell', () => {
+  it('keeps the dashboard shell visible when offline', () => {
     Object.defineProperty(navigator, 'onLine', {
       configurable: true,
       value: false,
@@ -42,8 +45,8 @@ describe('App shell', () => {
 
     render(<App />);
 
-    expect(screen.getAllByText('Offline').length).toBeGreaterThan(0);
-    expect(screen.getByText('Primary index cards')).toBeInTheDocument();
-    expect(screen.getByText('Your search bar, front and center')).toBeInTheDocument();
+    expect(screen.getByText('MARKET HOURS (LOCAL TIME)')).toBeInTheDocument();
+    expect(screen.getByText('QUICK LINKS')).toBeInTheDocument();
+    expect(screen.getByText('All times are local to the exchange')).toBeInTheDocument();
   });
 });
