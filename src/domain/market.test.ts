@@ -96,6 +96,7 @@ describe('supporting validators', () => {
         showSearch: true,
         showQuickLinks: true,
       },
+      providerSymbolOverrides: {},
       dataProvider: {
         providerId: 'twelvedata',
         apiKey: null,

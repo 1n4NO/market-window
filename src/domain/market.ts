@@ -103,6 +103,7 @@ export interface UserSettings {
   enabledMarketIds: string[];
   marketOrder: string[];
   quickLinks: QuickLink[];
+  providerSymbolOverrides: Record<string, Record<string, string>>;
   appearance: {
     density: 'compact' | 'comfortable';
     clockFormat: '12h' | '24h';

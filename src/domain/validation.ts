@@ -297,6 +297,43 @@ export function validateUserSettings(value: unknown, path = 'settings'): Validat
   if (!Array.isArray(value.marketOrder) || !value.marketOrder.every(isNonEmptyString)) {
     errors.push({ path: `${path}.marketOrder`, message: 'marketOrder must be an array of strings.' });
   }
+  if (!isRecord(value.providerSymbolOverrides)) {
+    errors.push({
+      path: `${path}.providerSymbolOverrides`,
+      message: 'providerSymbolOverrides must be an object.',
+    });
+  } else {
+    for (const [marketId, providerMap] of Object.entries(value.providerSymbolOverrides)) {
+      if (!isNonEmptyString(marketId)) {
+        errors.push({
+          path: `${path}.providerSymbolOverrides`,
+          message: 'providerSymbolOverrides keys must be non-empty strings.',
+        });
+        continue;
+      }
+      if (!isRecord(providerMap)) {
+        errors.push({
+          path: `${path}.providerSymbolOverrides.${marketId}`,
+          message: 'providerSymbolOverrides entries must be objects.',
+        });
+        continue;
+      }
+      for (const [providerId, symbol] of Object.entries(providerMap)) {
+        if (!isNonEmptyString(providerId)) {
+          errors.push({
+            path: `${path}.providerSymbolOverrides.${marketId}`,
+            message: 'provider ids must be non-empty strings.',
+          });
+        }
+        if (!isNonEmptyString(symbol)) {
+          errors.push({
+            path: `${path}.providerSymbolOverrides.${marketId}.${providerId}`,
+            message: 'provider symbols must be non-empty strings.',
+          });
+        }
+      }
+    }
+  }
   if (!Array.isArray(value.quickLinks)) {
     errors.push({ path: `${path}.quickLinks`, message: 'quickLinks must be an array.' });
   } else {

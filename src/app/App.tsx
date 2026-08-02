@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { HOLIDAY_CALENDARS } from '../data/holiday-calendars';
 import { MARKET_DEFINITIONS } from '../config/markets';
-import type { MarketClockState } from '../domain/market';
+import type { MarketClockState, MarketQuote } from '../domain/market';
 import { getMarketClockState } from '../services/marketClock/marketClock';
 import { createBundledHolidayProvider } from '../services/holidayProvider/holidayProvider';
 import { useCountdownText } from '../hooks/useCountdownText';
 import { useExtensionStorage } from '../hooks/useExtensionStorage';
 import { DeveloperSettingsPanel } from '../components/settings/DeveloperSettingsPanel';
+import { createMarketQuoteCacheService } from '../services/marketData/quoteCache';
+import { MARKET_DATA_PROVIDERS, resolveActiveMarketDataProviderId } from '../services/marketData/providerRegistry';
+import { getDefaultStorageController } from '../services/storage/extensionStorage';
 
 function formatLocalDateTime(now: Date) {
   return {
@@ -20,8 +23,13 @@ const holidayProvider = createBundledHolidayProvider(HOLIDAY_CALENDARS);
 
 export function App() {
   const [now, setNow] = useState(() => new Date());
+  const [quoteRefreshNonce, setQuoteRefreshNonce] = useState(0);
   const { snapshot } = useExtensionStorage();
   const [states, setStates] = useState<Record<string, MarketClockState>>({});
+  const quoteCacheService = useMemo(
+    () => createMarketQuoteCacheService(getDefaultStorageController(), MARKET_DATA_PROVIDERS),
+    [],
+  );
   const visibleMarkets = useMemo(() => {
     const enabled = new Set(snapshot.settings.enabledMarketIds);
     const order = new Map(snapshot.settings.marketOrder.map((marketId, index) => [marketId, index]));
@@ -30,9 +38,33 @@ export function App() {
       (left, right) => (order.get(left.id) ?? Number.POSITIVE_INFINITY) - (order.get(right.id) ?? Number.POSITIVE_INFINITY),
     );
   }, [snapshot.settings.enabledMarketIds, snapshot.settings.marketOrder]);
+  const quoteEntriesByMarketId = useMemo(() => {
+    return Object.fromEntries(snapshot.quoteCache.quotes.map((entry) => [entry.marketId, entry] as const));
+  }, [snapshot.quoteCache.quotes]);
+  const statesRef = useRef(states);
+  const nowRef = useRef(now);
+  const statesReady = useMemo(
+    () => visibleMarkets.every((market) => states[market.id] !== undefined),
+    [states, visibleMarkets],
+  );
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    statesRef.current = states;
+  }, [states]);
+
+  useEffect(() => {
+    nowRef.current = now;
+  }, [now]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setQuoteRefreshNonce((value) => value + 1);
+    }, 60_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -58,7 +90,48 @@ export function App() {
     };
   }, [now, visibleMarkets]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const activeProviderId = resolveActiveMarketDataProviderId(
+      snapshot.settings.dataProvider.providerId,
+      snapshot.settings.dataProvider.apiKey,
+    );
+
+    async function refreshQuotes() {
+      await quoteCacheService.refreshQuotes({
+        markets: visibleMarkets,
+        marketStates: statesRef.current,
+        providerId: activeProviderId,
+        apiKey: snapshot.settings.dataProvider.apiKey ?? '',
+        now: nowRef.current,
+        overrides: snapshot.settings.providerSymbolOverrides,
+      });
+    }
+
+    void refreshQuotes().catch(() => {
+      if (!cancelled) {
+        return;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    quoteRefreshNonce,
+    quoteCacheService,
+    visibleMarkets,
+    snapshot.settings.dataProvider.apiKey,
+    snapshot.settings.dataProvider.providerId,
+    snapshot.settings.providerSymbolOverrides,
+    statesReady,
+  ]);
+
   const { date, time } = useMemo(() => formatLocalDateTime(now), [now]);
+  const activeProviderId = resolveActiveMarketDataProviderId(
+    snapshot.settings.dataProvider.providerId,
+    snapshot.settings.dataProvider.apiKey,
+  );
 
   return (
     <main className="min-h-screen bg-bg px-5 py-6 text-text sm:px-8">
@@ -70,14 +143,16 @@ export function App() {
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Clock engine developer view</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-                  Temporary phase 2 surface for manually verifying timezone-aware market states,
-                  transitions, lunch breaks, weekends, and next-open behavior.
+                  Temporary phase 5 surface for manually verifying timezone-aware market states,
+                  transitions, lunch breaks, cached quotes, provider normalization, and next-open behavior.
                 </p>
               </div>
               <div className="rounded-2xl border border-line bg-surface/70 px-4 py-3 text-right">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted">Local time</p>
                 <p className="mt-1 font-mono text-2xl tabular-nums">{time}</p>
                 <p className="text-sm text-muted">{date}</p>
+                <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">Data provider</p>
+                <p className="text-sm text-text">{activeProviderId}</p>
               </div>
             </div>
           </div>
@@ -86,6 +161,7 @@ export function App() {
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visibleMarkets.map((market) => {
             const state = states[market.id];
+            const quoteEntry = quoteEntriesByMarketId[market.id];
             return (
               <MarketStateCard
                 key={market.id}
@@ -95,6 +171,7 @@ export function App() {
                 timezone={market.timezone}
                 state={state}
                 now={now}
+                quoteEntry={quoteEntry}
               />
             );
           })}
@@ -118,6 +195,7 @@ function MarketStateCard({
   timezone,
   state,
   now,
+  quoteEntry,
 }: {
   marketId: string;
   exchangeCode: string;
@@ -125,8 +203,26 @@ function MarketStateCard({
   timezone: string;
   state?: MarketClockState;
   now: Date;
+  quoteEntry?: {
+    marketId: string;
+    quote: MarketQuote;
+    fetchedAt: string;
+    providerTimestamp: string | null;
+    expiresAt: string | null;
+    providerId: string;
+  };
 }) {
   const countdown = useCountdownText(state?.nextTransitionAt ?? null);
+  const quote = quoteEntry?.quote ?? null;
+  const valueLabel = quote && quote.value !== null ? quote.value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'n/a';
+  const changeLabel =
+    quote && quote.absoluteChange !== null
+      ? `${quote.absoluteChange >= 0 ? '+' : ''}${quote.absoluteChange.toFixed(2)}`
+      : 'n/a';
+  const percentLabel =
+    quote && quote.percentageChange !== null
+      ? `${quote.percentageChange >= 0 ? '+' : ''}${quote.percentageChange.toFixed(2)}%`
+      : 'n/a';
 
   return (
     <article className="rounded-2xl border border-line bg-surface/70 p-5 shadow-glow">
@@ -153,6 +249,20 @@ function MarketStateCard({
         <DetailRow label="Countdown" value={countdown ?? 'n/a'} mono />
         <DetailRow label="Snapshot time" value={format(now, 'HH:mm:ss')} mono />
       </dl>
+
+      <div className="mt-5 rounded-xl border border-line/70 bg-bg/50 p-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted">Quote cache</p>
+        <div className="mt-3 grid gap-2 text-sm">
+          <DetailRow label="Value" value={valueLabel} mono />
+          <DetailRow label="Change" value={changeLabel} mono />
+          <DetailRow label="Percent" value={percentLabel} mono />
+          <DetailRow label="Data state" value={quote?.dataState ?? 'unavailable'} />
+          <DetailRow label="Provider" value={quote?.provider ?? 'n/a'} />
+          <DetailRow label="Quote time" value={quote?.asOf ?? 'n/a'} mono />
+          <DetailRow label="Cache fetched" value={quoteEntry?.fetchedAt ?? 'n/a'} mono />
+          <DetailRow label="Cache expiry" value={quoteEntry?.expiresAt ?? 'n/a'} mono />
+        </div>
+      </div>
     </article>
   );
 }

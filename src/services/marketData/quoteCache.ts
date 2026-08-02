@@ -1,0 +1,377 @@
+import type { MarketDefinition, MarketQuote } from '../../domain/market';
+import type { MarketClockState } from '../../domain/market';
+import {
+  type CachedQuoteEntry,
+  type ExtensionStorageController,
+  type QuoteCacheState,
+  createDefaultQuoteCache,
+} from '../storage/extensionStorage';
+import {
+  createMarketQuote,
+  resolveMarketProviderSymbol,
+  withProviderSymbolOverride,
+  MarketDataError,
+  type MarketDataProvider,
+  type ProviderSymbolOverrideMap,
+} from './marketData';
+
+export const OPEN_MARKET_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+export const BREAK_MARKET_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
+export const CLOSED_MARKET_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+export const POST_CLOSE_REFRESH_GRACE_MS = 5 * 60 * 1000;
+
+export type QuoteRefreshStatus = 'updated' | 'cached' | 'skipped' | 'failed';
+
+export interface QuoteRefreshResult {
+  marketId: string;
+  status: QuoteRefreshStatus;
+  quote: MarketQuote | null;
+  entry: CachedQuoteEntry | null;
+  stale: boolean;
+  error: MarketDataError | null;
+}
+
+export interface SymbolValidationResult {
+  marketId: string;
+  providerId: string;
+  symbol: string | null;
+  valid: boolean;
+  message: string | null;
+}
+
+function toDate(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getIntervalForState(state: MarketClockState['state']): number {
+  switch (state) {
+    case 'open':
+    case 'pre-market':
+      return OPEN_MARKET_REFRESH_INTERVAL_MS;
+    case 'lunch-break':
+      return BREAK_MARKET_REFRESH_INTERVAL_MS;
+    case 'closed':
+    case 'weekend':
+    case 'holiday':
+      return CLOSED_MARKET_REFRESH_INTERVAL_MS;
+    default:
+      return OPEN_MARKET_REFRESH_INTERVAL_MS;
+  }
+}
+
+export function computeQuoteExpiryAt(
+  marketState: MarketClockState,
+  fetchedAt: Date,
+  providerState: MarketQuote['dataState'],
+): Date {
+  const intervalMs = getIntervalForState(marketState.state);
+  const intervalExpiry = new Date(fetchedAt.getTime() + intervalMs);
+  const nextTransitionAt = toDate(marketState.nextTransitionAt);
+
+  if (marketState.state === 'open' && nextTransitionAt) {
+    return new Date(Math.min(intervalExpiry.getTime(), nextTransitionAt.getTime() + POST_CLOSE_REFRESH_GRACE_MS));
+  }
+  if ((marketState.state === 'closed' || marketState.state === 'weekend' || marketState.state === 'holiday') && nextTransitionAt) {
+    return new Date(Math.min(intervalExpiry.getTime(), nextTransitionAt.getTime()));
+  }
+  if (marketState.state === 'lunch-break' && nextTransitionAt) {
+    return new Date(Math.min(intervalExpiry.getTime(), nextTransitionAt.getTime()));
+  }
+
+  if (providerState === 'mock') {
+    return intervalExpiry;
+  }
+
+  return intervalExpiry;
+}
+
+export function isQuoteCacheEntryStale(
+  entry: CachedQuoteEntry | null,
+  marketState: MarketClockState,
+  now: Date,
+): boolean {
+  if (!entry || !entry.expiresAt) {
+    return true;
+  }
+  const expiresAt = new Date(entry.expiresAt);
+  if (Number.isNaN(expiresAt.getTime())) {
+    return true;
+  }
+  return now.getTime() >= expiresAt.getTime();
+}
+
+export function createUnavailableQuote(market: MarketDefinition, providerId: string): MarketQuote {
+  return createMarketQuote({
+    marketId: market.id,
+    symbol: resolveMarketProviderSymbol(market, providerId) ?? 'unavailable',
+    indexName: market.indexName,
+    value: null,
+    previousClose: null,
+    absoluteChange: null,
+    percentageChange: null,
+    currency: null,
+    asOf: null,
+    dataState: 'unavailable',
+    provider: providerId,
+  });
+}
+
+export function getCacheEntryByMarketId(cache: QuoteCacheState, marketId: string): CachedQuoteEntry | null {
+  return cache.quotes.find((entry) => entry.marketId === marketId) ?? null;
+}
+
+export class MarketQuoteCacheService {
+  private readonly inFlight = new Map<string, Promise<QuoteRefreshResult>>();
+
+  constructor(
+    private readonly storage: ExtensionStorageController,
+    private readonly providers: Record<string, MarketDataProvider>,
+  ) {}
+
+  getSnapshot(): QuoteCacheState {
+    return this.storage.getSnapshot().quoteCache;
+  }
+
+  getEntry(marketId: string): CachedQuoteEntry | null {
+    return getCacheEntryByMarketId(this.getSnapshot(), marketId);
+  }
+
+  isStale(marketId: string, marketState: MarketClockState, now: Date): boolean {
+    return isQuoteCacheEntryStale(this.getEntry(marketId), marketState, now);
+  }
+
+  async validateConfiguredSymbols(
+    markets: MarketDefinition[],
+    providerId: string,
+    apiKey: string,
+    overrides: ProviderSymbolOverrideMap = {},
+  ): Promise<SymbolValidationResult[]> {
+    const provider = this.providers[providerId];
+    if (!provider) {
+      return markets.map((market) => ({
+        marketId: market.id,
+        providerId,
+        symbol: null,
+        valid: false,
+        message: `Provider "${providerId}" is not available.`,
+      }));
+    }
+
+    const results = await Promise.all(
+      markets.map(async (market) => {
+        const symbol = resolveMarketProviderSymbol(market, provider.id, overrides);
+        if (!symbol) {
+          return {
+            marketId: market.id,
+            providerId: provider.id,
+            symbol: null,
+            valid: false,
+            message: `No symbol configured for ${market.exchangeCode}.`,
+          } satisfies SymbolValidationResult;
+        }
+
+        try {
+          const marketWithSymbol = withProviderSymbolOverride(market, provider.id, symbol);
+          await provider.fetchQuote(marketWithSymbol, apiKey);
+          return {
+            marketId: market.id,
+            providerId: provider.id,
+            symbol,
+            valid: true,
+            message: null,
+          } satisfies SymbolValidationResult;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown symbol validation failure.';
+          return {
+            marketId: market.id,
+            providerId: provider.id,
+            symbol,
+            valid: false,
+            message,
+          } satisfies SymbolValidationResult;
+        }
+      }),
+    );
+
+    return results;
+  }
+
+  async refreshQuotes(options: {
+    markets: MarketDefinition[];
+    marketStates: Record<string, MarketClockState>;
+    providerId: string;
+    apiKey: string;
+    now: Date;
+    overrides?: ProviderSymbolOverrideMap;
+  }): Promise<QuoteRefreshResult[]> {
+    const provider = this.providers[options.providerId] ?? this.providers.mock;
+    const effectiveProviderId = provider.id;
+    const results = await Promise.all(
+      options.markets.map(async (market) => {
+        const state = options.marketStates[market.id];
+        if (!state) {
+          return {
+            marketId: market.id,
+            status: 'skipped',
+            quote: null,
+            entry: this.getEntry(market.id),
+            stale: false,
+            error: null,
+          } satisfies QuoteRefreshResult;
+        }
+
+        const currentEntry = this.getEntry(market.id);
+        const stale = isQuoteCacheEntryStale(currentEntry, state, options.now);
+        if (!stale) {
+          return {
+            marketId: market.id,
+            status: 'cached',
+            quote: currentEntry?.quote ?? null,
+            entry: currentEntry,
+            stale: false,
+            error: null,
+          } satisfies QuoteRefreshResult;
+        }
+
+        const symbol = resolveMarketProviderSymbol(market, effectiveProviderId, options.overrides);
+        if (!symbol) {
+          const unavailableQuote = createUnavailableQuote(market, effectiveProviderId);
+          return {
+            marketId: market.id,
+            status: 'failed',
+            quote: unavailableQuote,
+            entry: currentEntry,
+            stale: true,
+            error: new MarketDataError('symbol_unavailable', `No symbol configured for ${market.exchangeCode}.`),
+          } satisfies QuoteRefreshResult;
+        }
+
+        const dedupeKey = `${effectiveProviderId}:${market.id}:${symbol}`;
+        const inFlight = this.inFlight.get(dedupeKey);
+        if (inFlight) {
+          return inFlight;
+        }
+
+        const promise = this.refreshMarket({
+          market,
+          provider,
+          apiKey: options.apiKey,
+          marketState: state,
+          now: options.now,
+          symbol,
+          currentEntry,
+        }).finally(() => {
+          this.inFlight.delete(dedupeKey);
+        });
+
+        this.inFlight.set(dedupeKey, promise);
+        return promise;
+      }),
+    );
+
+    return results;
+  }
+
+  private async refreshMarket(options: {
+    market: MarketDefinition;
+    provider: MarketDataProvider;
+    apiKey: string;
+    marketState: MarketClockState;
+    now: Date;
+    symbol: string;
+    currentEntry: CachedQuoteEntry | null;
+  }): Promise<QuoteRefreshResult> {
+    const marketWithSymbol = withProviderSymbolOverride(options.market, options.provider.id, options.symbol);
+
+    try {
+      const quote = await options.provider.fetchQuote(marketWithSymbol, options.apiKey);
+      const fetchedAt = options.now.toISOString();
+      const expiresAt = computeQuoteExpiryAt(options.marketState, options.now, quote.dataState).toISOString();
+      const entry: CachedQuoteEntry = {
+        marketId: options.market.id,
+        quote,
+        fetchedAt,
+        providerTimestamp: quote.asOf,
+        expiresAt,
+        providerId: options.provider.id,
+      };
+
+      const current = this.getSnapshot();
+      const nextQuotes = current.quotes.filter((candidate) => candidate.marketId !== options.market.id);
+      nextQuotes.push(entry);
+      await this.storage.setQuoteCache({
+        quotes: nextQuotes,
+        lastSuccessfulRefreshAt: fetchedAt,
+      });
+
+      return {
+        marketId: options.market.id,
+        status: 'updated',
+        quote,
+        entry,
+        stale: false,
+        error: null,
+      };
+    } catch (error) {
+      if (error instanceof MarketDataError) {
+        const marketDataError = error;
+        if (options.currentEntry) {
+          return {
+            marketId: options.market.id,
+            status: 'failed',
+            quote: options.currentEntry.quote,
+            entry: options.currentEntry,
+            stale: true,
+            error: marketDataError,
+          };
+        }
+        return {
+          marketId: options.market.id,
+          status: 'failed',
+          quote: createUnavailableQuote(options.market, options.provider.id),
+          entry: null,
+          stale: true,
+          error: marketDataError,
+        };
+      }
+
+      const fallbackError = new MarketDataError(
+        'unknown_error',
+        error instanceof Error ? error.message : 'Unknown market data failure.',
+      );
+      if (options.currentEntry) {
+        return {
+          marketId: options.market.id,
+          status: 'failed',
+          quote: options.currentEntry.quote,
+          entry: options.currentEntry,
+          stale: true,
+          error: fallbackError,
+        };
+      }
+      return {
+        marketId: options.market.id,
+        status: 'failed',
+        quote: createUnavailableQuote(options.market, options.provider.id),
+        entry: null,
+        stale: true,
+        error: fallbackError,
+      };
+    }
+  }
+}
+
+export function createMarketQuoteCacheService(
+  storage: ExtensionStorageController,
+  providers: Record<string, MarketDataProvider>,
+): MarketQuoteCacheService {
+  return new MarketQuoteCacheService(storage, providers);
+}
+
+export function createEmptyQuoteCache(): QuoteCacheState {
+  return createDefaultQuoteCache();
+}

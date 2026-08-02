@@ -41,6 +41,9 @@ function reorderMarket(settings: UserSettings, marketId: string, direction: -1 |
 export function DeveloperSettingsPanel() {
   const { controller, snapshot } = useExtensionStorage();
   const [quickLinksText, setQuickLinksText] = useState(() => createQuickLinksJson(snapshot.settings.quickLinks));
+  const [providerOverridesText, setProviderOverridesText] = useState(() =>
+    JSON.stringify(snapshot.settings.providerSymbolOverrides, null, 2),
+  );
   const [jsonText, setJsonText] = useState('');
   const [includeSecrets, setIncludeSecrets] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -92,6 +95,22 @@ export function DeveloperSettingsPanel() {
         ...patch,
       },
     });
+  }
+
+  async function saveProviderOverridesFromJson(): Promise<void> {
+    try {
+      const parsed = JSON.parse(providerOverridesText);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new Error('Provider overrides JSON must be an object.');
+      }
+      await saveSettings({
+        ...snapshot.settings,
+        providerSymbolOverrides: parsed as UserSettings['providerSymbolOverrides'],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid provider overrides JSON.';
+      updateStatus(message);
+    }
   }
 
   async function saveQuickLinksFromJson(): Promise<void> {
@@ -305,6 +324,37 @@ export function DeveloperSettingsPanel() {
           <p className="mt-2 text-xs text-muted">
             Last successful refresh: {snapshot.quoteCache.lastSuccessfulRefreshAt ?? 'none'}
           </p>
+          <label className="mt-4 grid gap-2 text-sm">
+            <span className="text-muted">Provider symbol overrides JSON</span>
+            <textarea
+              className="min-h-36 rounded-xl border border-line bg-bg px-3 py-2 font-mono text-xs leading-5 text-text outline-none focus-visible:border-accent"
+              value={providerOverridesText}
+              onChange={(event) => {
+                setProviderOverridesText(event.target.value);
+              }}
+            />
+          </label>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className="rounded-full border border-line px-4 py-2 text-xs font-medium text-text transition hover:border-accent"
+              onClick={() => {
+                setProviderOverridesText(JSON.stringify(snapshot.settings.providerSymbolOverrides, null, 2));
+                updateStatus('Loaded provider symbol overrides into the editor.');
+              }}
+              type="button"
+            >
+              Load overrides
+            </button>
+            <button
+              className="rounded-full border border-line px-4 py-2 text-xs font-medium text-text transition hover:border-accent"
+              onClick={() => {
+                void saveProviderOverridesFromJson();
+              }}
+              type="button"
+            >
+              Save overrides
+            </button>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-line/80 bg-bg/50 p-4">

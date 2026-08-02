@@ -12,6 +12,9 @@ export interface CachedQuoteEntry {
   marketId: string;
   quote: MarketQuote;
   fetchedAt: string;
+  providerTimestamp: string | null;
+  expiresAt: string | null;
+  providerId: string;
 }
 
 export interface QuoteCacheState {
@@ -125,6 +128,7 @@ export function createDefaultSettings(): UserSettings {
     enabledMarketIds: [...marketIds],
     marketOrder: [...marketIds],
     quickLinks: defaultQuickLinks(),
+    providerSymbolOverrides: {},
     appearance: {
       density: 'comfortable',
       clockFormat: '24h',
@@ -181,6 +185,29 @@ function normalizeQuickLinks(value: unknown): QuickLink[] {
   }
 
   return Array.from(deduped.values()).sort((left, right) => left.order - right.order);
+}
+
+function normalizeProviderSymbolOverrides(value: unknown): UserSettings['providerSymbolOverrides'] {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const overrides: UserSettings['providerSymbolOverrides'] = {};
+  for (const [marketId, providerMap] of Object.entries(value)) {
+    if (!isNonEmptyString(marketId) || !isRecord(providerMap)) {
+      continue;
+    }
+    overrides[marketId] = {};
+    for (const [providerId, symbol] of Object.entries(providerMap)) {
+      if (isNonEmptyString(providerId) && isNonEmptyString(symbol)) {
+        overrides[marketId][providerId] = symbol;
+      }
+    }
+    if (Object.keys(overrides[marketId]).length === 0) {
+      delete overrides[marketId];
+    }
+  }
+  return overrides;
 }
 
 function normalizeEnabledMarketIds(value: unknown): string[] {
@@ -246,6 +273,7 @@ function normalizeSettingsPayload(value: unknown): UserSettings {
     enabledMarketIds,
     marketOrder: normalizeMarketOrder(value.marketOrder, enabledMarketIds),
     quickLinks: normalizeQuickLinks(value.quickLinks),
+    providerSymbolOverrides: normalizeProviderSymbolOverrides(value.providerSymbolOverrides),
     appearance: normalizeAppearance(value.appearance),
     dataProvider: normalizeDataProvider(value.dataProvider),
   };
@@ -303,10 +331,21 @@ function normalizeQuoteEntry(value: unknown): CachedQuoteEntry | null {
   }
 
   const dataState = quote.dataState as MarketQuote['dataState'];
+  const providerTimestamp = isString(value.providerTimestamp) || value.providerTimestamp === null
+    ? value.providerTimestamp
+    : quote.asOf;
+  const expiresAt = isString(value.expiresAt) || value.expiresAt === null ? value.expiresAt : null;
+  const providerId = isNonEmptyString(value.providerId) ? value.providerId : quote.provider;
+  if (!isNonEmptyString(providerId)) {
+    return null;
+  }
 
   return {
     marketId: value.marketId,
     fetchedAt: value.fetchedAt,
+    providerTimestamp: providerTimestamp ?? null,
+    expiresAt,
+    providerId,
     quote: {
       marketId: quote.marketId,
       symbol: quote.symbol,
@@ -416,6 +455,30 @@ export function validateImportedSettings(input: unknown): SettingsImportResult {
     for (const marketId of marketOrder) {
       if (isString(marketId) && !MARKET_DEFINITIONS.some((market) => market.id === marketId)) {
         errors.push({ path: 'marketOrder', message: `Unknown market id "${marketId}".` });
+      }
+    }
+
+    if (isRecord(candidate.providerSymbolOverrides)) {
+      for (const [marketId, providerMap] of Object.entries(candidate.providerSymbolOverrides)) {
+        if (!MARKET_DEFINITIONS.some((market) => market.id === marketId)) {
+          errors.push({ path: 'providerSymbolOverrides', message: `Unknown market id "${marketId}".` });
+          continue;
+        }
+        if (!isRecord(providerMap)) {
+          errors.push({
+            path: `providerSymbolOverrides.${marketId}`,
+            message: 'Provider symbol overrides must be objects.',
+          });
+          continue;
+        }
+        for (const [providerId, symbol] of Object.entries(providerMap)) {
+          if (!isNonEmptyString(providerId) || !isNonEmptyString(symbol)) {
+            errors.push({
+              path: `providerSymbolOverrides.${marketId}.${providerId}`,
+              message: 'Provider symbol overrides must be non-empty strings.',
+            });
+          }
+        }
       }
     }
   }

@@ -144,6 +144,7 @@ describe('extension storage', () => {
         enabledMarketIds: ['nse', 'invalid-market'],
         marketOrder: ['nse', 'invalid-market'],
         quickLinks: [],
+        providerSymbolOverrides: {},
         appearance: {
           density: 'compact',
           clockFormat: '24h',
@@ -167,6 +168,7 @@ describe('extension storage', () => {
           enabledMarketIds: ['nse'],
           marketOrder: ['nse'],
           quickLinks: [],
+          providerSymbolOverrides: {},
           appearance: {
             density: 'compact',
             clockFormat: '24h',
@@ -195,6 +197,9 @@ describe('extension storage', () => {
         {
           marketId: 'nse',
           fetchedAt: '2026-08-02T10:00:00.000Z',
+          providerTimestamp: '2026-08-02T09:59:00.000Z',
+          expiresAt: '2026-08-02T10:15:00.000Z',
+          providerId: 'demo',
           quote: {
             marketId: 'nse',
             symbol: 'NSE:NIFTY',
