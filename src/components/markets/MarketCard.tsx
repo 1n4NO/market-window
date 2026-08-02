@@ -107,6 +107,100 @@ function formatCloseValue(value: number | null): string | null {
   });
 }
 
+function formatCompactValue(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return '—';
+  }
+
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+  });
+}
+
+function buildSparklinePath(values: number[]): string {
+  if (values.length === 0) {
+    return '';
+  }
+  if (values.length === 1) {
+    return 'M 0 20 L 110 20';
+  }
+
+  const width = 110;
+  const height = 36;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  return values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * width;
+      const normalized = (value - min) / range;
+      const y = height - normalized * height;
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+function MarketSparkline({
+  values,
+  tone,
+  idSuffix,
+}: {
+  values: number[];
+  tone: 'positive' | 'negative' | 'neutral' | 'warning';
+  idSuffix: string;
+}) {
+  if (values.length < 2) {
+    return null;
+  }
+
+  const start = values[0];
+  const end = values[values.length - 1];
+  const fillColor =
+    tone === 'positive'
+      ? 'rgba(71, 214, 148, 0.18)'
+      : tone === 'negative'
+        ? 'rgba(255, 108, 108, 0.18)'
+        : 'rgba(111, 160, 255, 0.16)';
+  const strokeColor =
+    tone === 'positive'
+      ? 'rgba(71, 214, 148, 0.95)'
+      : tone === 'negative'
+        ? 'rgba(255, 108, 108, 0.95)'
+        : 'rgba(111, 160, 255, 0.95)';
+  const path = buildSparklinePath(values);
+  const linePath = `${path} L 110 36 L 0 36 Z`;
+  const strokeGradientId = `market-sparkline-stroke-${idSuffix}`;
+  const fillGradientId = `market-sparkline-fill-${idSuffix}`;
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <svg
+        aria-label={`Intraday sparkline from ${formatCompactValue(start)} to ${formatCompactValue(end)}`}
+        className="h-[42px] w-[118px] shrink-0"
+        viewBox="0 0 110 40"
+        fill="none"
+        role="img"
+      >
+        <defs>
+          <linearGradient id={strokeGradientId} x1="0" x2="110" y1="0" y2="0">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.6" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="1" />
+          </linearGradient>
+          <linearGradient id={fillGradientId} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={fillColor} />
+            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+          </linearGradient>
+        </defs>
+        <path d={linePath} fill={`url(#${fillGradientId})`} />
+        <path d={path} stroke={`url(#${strokeGradientId})`} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+      </svg>
+      <p className="text-[10px] leading-none text-[color:var(--mw-text-muted)]">Intraday</p>
+    </div>
+  );
+}
+
 export function MarketCard({
   card,
   now,
@@ -115,6 +209,7 @@ export function MarketCard({
   now: Date;
 }) {
   const hasQuoteValue = card.quote?.value !== null && card.quote?.value !== undefined;
+  const hasSeries = Array.isArray(card.quote?.intradaySeries) && (card.quote?.intradaySeries?.length ?? 0) > 1;
   const stateTone = stateToneMap[card.clockState.state];
   const closeValue = formatCloseValue(card.quote?.previousClose ?? card.quote?.value ?? null);
   const transitionLabel =
@@ -131,26 +226,23 @@ export function MarketCard({
       tabIndex={0}
     >
       <div className="flex h-full flex-col">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="flex items-start gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <span className="flex h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] shadow-[var(--mw-shadow-inset)]">
               <MarketFlagIcon marketId={card.market.id} className="h-full w-full" />
             </span>
-              <p className="min-w-0 truncate text-[18px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--mw-text)]">
-              {card.market.exchangeCode}{' '}
-              <span className="text-[14px] font-normal text-[color:var(--mw-text-secondary)] opacity-70">
-                ({countryLabelMap[card.market.id] ?? card.market.country})
-              </span>
-            </p>
+            <div className="min-w-0 pt-[1px]">
+              <p className="whitespace-nowrap text-[18px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--mw-text)]">
+                {card.market.exchangeCode}{' '}
+                <span className="text-[14px] font-normal text-[color:var(--mw-text-secondary)] opacity-70">
+                  ({countryLabelMap[card.market.id] ?? card.market.country})
+                </span>
+              </p>
+              <div className="mt-1">
+                <StatusBadge tone={stateTone}>{getStateBadgeLabel(card)}</StatusBadge>
+              </div>
+            </div>
           </div>
-
-          {card.clockState.state === 'weekend' ? (
-            <span className="inline-flex items-center rounded-full border border-[color:var(--mw-border)]/55 bg-[color:var(--mw-panel-inset)] px-2 py-[1px] text-[9px] font-medium uppercase tracking-[0.12em] text-[color:var(--mw-text-muted)]">
-              {getStateBadgeLabel(card)}
-            </span>
-          ) : (
-            <StatusBadge tone={stateTone}>{getStateBadgeLabel(card)}</StatusBadge>
-          )}
         </div>
 
         <div className="mt-4">
@@ -179,21 +271,58 @@ export function MarketCard({
           </div>
         </div>
 
-        <div className="mt-3 min-h-[68px] space-y-1.5">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--mw-text-muted)]">Latest quote</p>
+        <div className="mt-3 min-h-[96px]">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--mw-text-muted)]">Latest quote</p>
+            {card.demoLabel ? <StatusBadge tone="accent">DEMO</StatusBadge> : null}
+          </div>
           {hasQuoteValue ? (
-            <>
-              <p className="text-[16px] font-medium leading-none tabular-nums text-[color:var(--mw-text-secondary)]">
-                {closeValue ?? 'Unavailable'}
-              </p>
-              <p className="text-[12px] leading-4 text-[color:var(--mw-text-muted)]">{card.localDisplayTimestampLabel}</p>
-            </>
+            <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_118px] gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
+                  <p className="text-[16px] font-medium leading-none tabular-nums text-[color:var(--mw-text-secondary)]">
+                    {closeValue ?? 'Unavailable'}
+                  </p>
+                  {hasSeries ? null : (
+                    <p className="text-[12px] leading-4 text-[color:var(--mw-text-muted)]">{card.localDisplayTimestampLabel}</p>
+                  )}
+                </div>
+                {card.quote?.dayHigh !== undefined || card.quote?.dayLow !== undefined ? (
+                  <div className="mt-2 flex items-center gap-3 text-[11px] leading-4 text-[color:var(--mw-text-muted)]">
+                    {card.quote?.dayHigh !== undefined && card.quote?.dayHigh !== null ? (
+                      <span className="whitespace-nowrap">
+                        High <span className="text-[color:var(--mw-text-secondary)]">{formatCompactValue(card.quote.dayHigh)}</span>
+                      </span>
+                    ) : null}
+                    {card.quote?.dayLow !== undefined && card.quote?.dayLow !== null ? (
+                      <span className="whitespace-nowrap">
+                        Low <span className="text-[color:var(--mw-text-secondary)]">{formatCompactValue(card.quote.dayLow)}</span>
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {hasSeries ? (
+                  <p className="mt-2 text-[12px] leading-4 text-[color:var(--mw-text-muted)]">{card.localDisplayTimestampLabel}</p>
+                ) : null}
+              </div>
+              <div className="flex justify-end">
+                {hasSeries ? (
+                  <MarketSparkline
+                    idSuffix={card.market.id}
+                    tone={card.valueTone}
+                    values={card.quote?.intradaySeries ?? []}
+                  />
+                ) : null}
+              </div>
+            </div>
           ) : (
-            <p className="text-[13px] leading-4 text-[color:var(--mw-text-muted)]">Unavailable</p>
+            <div className="mt-1.5 flex min-h-[54px] items-start">
+              <p className="text-[13px] leading-4 text-[color:var(--mw-text-muted)]">Unavailable</p>
+            </div>
           )}
         </div>
 
-        <div className="mt-auto border-t border-[color:rgba(255,255,255,0.10)] pt-3">
+        <div className="mt-auto border-t border-[color:rgba(255,255,255,0.08)] pt-3">
           <div className="flex h-[98px] flex-col justify-start gap-[4px]">
             <p className="whitespace-nowrap text-[13px] font-medium leading-[1.35] text-[color:var(--mw-text-secondary)]">
               Next session

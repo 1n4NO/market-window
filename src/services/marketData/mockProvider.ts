@@ -9,7 +9,7 @@ export class MockMarketDataProvider implements MarketDataProvider {
 
   capabilities = {
     quotes: true,
-    historicalSeries: false,
+    historicalSeries: true,
     marketMovers: false,
     moverUniverse: 'unsupported',
   } as const;
@@ -61,6 +61,9 @@ export class MockMarketDataProvider implements MarketDataProvider {
       previousClose: fixture.previousClose,
       absoluteChange: null,
       percentageChange: null,
+      dayHigh: fixture.dayHigh,
+      dayLow: fixture.dayLow,
+      intradaySeries: fixture.intradaySeries,
       currency: fixture.currency,
       asOf: fixture.asOf,
       dataState: 'mock',

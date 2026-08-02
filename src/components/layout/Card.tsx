@@ -14,7 +14,7 @@ export function Card({
   return (
     <Component
       className={classNames(
-        'rounded-[14px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel)] shadow-[var(--mw-shadow-card)]',
+        'rounded-[14px] border border-[color:rgba(147,166,197,0.14)] bg-[color:var(--mw-panel)] shadow-[var(--mw-shadow-card)]',
         'backdrop-blur-0',
         className,
       )}

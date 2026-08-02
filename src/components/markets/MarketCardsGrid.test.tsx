@@ -174,7 +174,7 @@ describe('MarketCardsGrid', () => {
     expect(screen.queryByText('Local display')).not.toBeInTheDocument();
     expect(screen.queryByText('Data state')).not.toBeInTheDocument();
     expect(screen.queryByText('Cached')).not.toBeInTheDocument();
-    expect(screen.queryByText('DEMO')).not.toBeInTheDocument();
+    expect(screen.getByText('DEMO')).toBeInTheDocument();
 
     await user.tab();
     expect(screen.getByRole('article', { name: 'NSE NIFTY 50 market card' })).toHaveFocus();

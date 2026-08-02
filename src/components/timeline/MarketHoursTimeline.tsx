@@ -253,14 +253,14 @@ export function MarketHoursTimeline({
     <Card className={classNames('h-[264px] overflow-hidden rounded-[14px]', sectionPadding, className)}>
       <div className="flex h-full flex-col gap-2">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--mw-text-muted)]">MARKET HOURS (LOCAL TIME)</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.11em] text-[color:var(--mw-text-muted)]">MARKET HOURS (LOCAL TIME)</p>
           {hasProjectedSessions ? <p className="text-[11px] text-[color:var(--mw-text-muted)]">Weekend projection</p> : null}
         </div>
 
         <div className="grid flex-1 min-h-0 gap-6 min-[1050px]:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 flex min-h-0 flex-col">
             <div className="relative flex min-h-0 flex-1 flex-col">
-              <div className="grid grid-cols-[repeat(9,minmax(0,1fr))] border-b border-[color:var(--mw-border)]/70 pb-1.5 text-[11px] leading-none text-[color:var(--mw-text-muted)]">
+              <div className="grid grid-cols-[repeat(9,minmax(0,1fr))] border-b border-[color:rgba(147,166,197,0.10)] pb-1.5 text-[11px] leading-none text-[color:var(--mw-text-muted)]">
                 {hourScaleHours.map((hour) => {
                   const normalized = hour % 24;
                   let label = '12 AM';
@@ -302,8 +302,8 @@ export function MarketHoursTimeline({
                           </p>
                         </div>
 
-                        <div className="relative h-[26px] overflow-hidden rounded-[7px] bg-[rgba(255,255,255,0.015)]">
-                          <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent_0,transparent_calc(4.166%_-_1px),rgba(255,255,255,0.02)_calc(4.166%_-_1px),rgba(255,255,255,0.02)_4.166%)]" />
+                        <div className="relative h-[26px] overflow-hidden rounded-[7px] bg-[rgba(255,255,255,0.012)]">
+                          <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent_0,transparent_calc(4.166%_-_1px),rgba(255,255,255,0.018)_calc(4.166%_-_1px),rgba(255,255,255,0.018)_4.166%)]" />
 
                           {segments.length > 0 ? (
                             segments.map((segment) => {
@@ -370,7 +370,7 @@ export function MarketHoursTimeline({
           </div>
 
           <aside className="min-w-0 pt-0.5">
-            <ul className="divide-y divide-[color:var(--mw-border)]/45">
+            <ul className="divide-y divide-[rgba(147,166,197,0.08)]">
               {renderedRows.map(({ row }) => (
                 <li key={row.market.id} className="grid h-[34px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 py-0.5">
                   <div className="flex min-w-0 items-center gap-2">

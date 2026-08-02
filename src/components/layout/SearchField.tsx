@@ -29,7 +29,7 @@ export const SearchField = forwardRef<
       <label className="sr-only" htmlFor={id}>
         Search the web or enter a URL
       </label>
-      <div className="flex h-[46px] items-center gap-2 rounded-[12px] border border-[color:rgba(147,166,197,0.12)] bg-[color:var(--mw-panel-raised)] px-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+      <div className="flex h-[44px] items-center gap-2 rounded-[14px] border border-[color:rgba(147,166,197,0.10)] bg-[color:var(--mw-panel-raised)] px-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
         <Search className="h-4 w-4 shrink-0 text-[color:var(--mw-text-muted)]" aria-hidden="true" />
         <input
           ref={ref}

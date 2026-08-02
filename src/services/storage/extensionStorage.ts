@@ -321,6 +321,20 @@ function normalizeQuoteEntry(value: unknown): CachedQuoteEntry | null {
   if (quote.asOf !== null && !isString(quote.asOf)) {
     return null;
   }
+  if (quote.dayHigh !== undefined && quote.dayHigh !== null && typeof quote.dayHigh !== 'number') {
+    return null;
+  }
+  if (quote.dayLow !== undefined && quote.dayLow !== null && typeof quote.dayLow !== 'number') {
+    return null;
+  }
+  if (quote.intradaySeries !== undefined && quote.intradaySeries !== null) {
+    if (!Array.isArray(quote.intradaySeries)) {
+      return null;
+    }
+    if (quote.intradaySeries.some((entry) => typeof entry !== 'number' || !Number.isFinite(entry))) {
+      return null;
+    }
+  }
   if (!['live', 'delayed', 'end-of-day', 'cached', 'mock', 'unavailable'].includes(String(quote.dataState))) {
     return null;
   }
@@ -357,6 +371,12 @@ function normalizeQuoteEntry(value: unknown): CachedQuoteEntry | null {
       previousClose: quote.previousClose,
       absoluteChange: quote.absoluteChange,
       percentageChange: quote.percentageChange,
+      dayHigh: quote.dayHigh ?? null,
+      dayLow: quote.dayLow ?? null,
+      intradaySeries:
+        Array.isArray(quote.intradaySeries)
+          ? quote.intradaySeries.filter((entry): entry is number => typeof entry === 'number' && Number.isFinite(entry))
+          : null,
       currency: quote.currency,
       asOf: quote.asOf,
       dataState,

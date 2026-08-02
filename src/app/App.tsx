@@ -71,8 +71,8 @@ function getTimeZoneAbbreviation(now: Date, timeZone: string): string {
   return timeZoneName.replace(/^GMT([+-])/, 'GMT$1');
 }
 
-function getFooterFreshnessLabel(quoteStates: string[], hasApiKey: boolean): string {
-  if (!hasApiKey) {
+function getFooterFreshnessLabel(quoteStates: string[], usingDemoData: boolean): string {
+  if (usingDemoData) {
     return 'Demo data';
   }
 
@@ -148,15 +148,16 @@ export function App() {
     (typeof snapshot.quoteCache.quotes)[number] | null
   >;
   const hasApiKey = Boolean(snapshot.settings.dataProvider.apiKey?.trim());
-  const providerLabel = hasApiKey
-    ? snapshot.settings.dataProvider.providerId === 'twelvedata'
-      ? 'Twelve Data'
-      : snapshot.settings.dataProvider.providerId
-    : 'Demo mode';
-  const footerFreshnessLabel = getFooterFreshnessLabel(
-    snapshot.quoteCache.quotes.map((entry) => entry.quote.dataState),
-    hasApiKey,
-  );
+  const hasDemoQuotes = snapshot.quoteCache.quotes.some((entry) => entry.quote.dataState === 'mock');
+  const usingDemoData = !hasApiKey || hasDemoQuotes;
+  const providerLabel = usingDemoData
+    ? 'Demo mode'
+    : hasApiKey
+      ? snapshot.settings.dataProvider.providerId === 'twelvedata'
+        ? 'Twelve Data'
+        : snapshot.settings.dataProvider.providerId
+      : 'Demo mode';
+  const footerFreshnessLabel = getFooterFreshnessLabel(snapshot.quoteCache.quotes.map((entry) => entry.quote.dataState), usingDemoData);
   const shellDensity = 'gap-[14px]';
   const pagePadding = 'px-[24px] py-[22px]';
   const viewerTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -180,7 +181,7 @@ export function App() {
         className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(78,163,255,0.14),transparent_28%),radial-gradient(circle_at_85%_4%,rgba(139,92,246,0.08),transparent_26%),linear-gradient(180deg,rgba(5,8,15,1),rgba(7,11,18,1))]"
         />
       <div className={classNames('relative mx-auto flex w-full max-w-[1400px] flex-col', pagePadding, shellDensity)}>
-        <header className="grid gap-2 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
+        <header className="grid gap-1.5 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
           <ErrorBoundary fallbackMessage="The header could not render. The rest of the dashboard is still available." fallbackTitle="Header unavailable">
             <div className="min-w-0 self-start text-left">
               <p className="text-[32px] font-semibold leading-none tracking-[-0.02em] text-[color:var(--mw-text)]">{greetingLabel}</p>
@@ -190,13 +191,13 @@ export function App() {
 
           <ErrorBoundary fallbackMessage="The clock could not render. The rest of the dashboard is still available." fallbackTitle="Clock unavailable">
             <div className="justify-self-center text-center lg:justify-self-center">
-              <h1 className="flex items-end justify-center gap-2 whitespace-nowrap text-[52px] font-semibold leading-[0.92] tracking-[-0.04em] text-[color:var(--mw-text)]">
+              <h1 className="flex items-end justify-center gap-2 whitespace-nowrap text-[52px] font-semibold leading-[0.9] tracking-[-0.04em] text-[color:var(--mw-text)]">
                 <span>{formatClock(now, appearance.clockFormat)}</span>
-                <span className="pb-[2px] text-[17px] font-medium tracking-[-0.01em] text-[color:var(--mw-text-secondary)]">
+                <span className="pb-[2px] text-[16px] font-medium tracking-[-0.01em] text-[color:var(--mw-text-secondary)]">
                   {formatClockSuffix(now, viewerTimeZone, appearance.clockFormat)}
                 </span>
               </h1>
-              <p className="mt-1 text-[14px] leading-5 text-[color:var(--mw-text-secondary)]">
+              <p className="mt-1 text-[13px] leading-5 text-[color:var(--mw-text-secondary)]">
                 <span className="font-medium text-[color:var(--mw-text-secondary)]">{formatUtcOffset(now, viewerTimeZone)}</span>
                 <span aria-hidden="true" className="mx-2">
                   •
@@ -304,7 +305,7 @@ export function App() {
           fallbackMessage="The footer failed to render. The dashboard shell remains usable."
           fallbackTitle="Footer unavailable"
         >
-          <footer className="flex h-[28px] items-center justify-between gap-3 border-t border-[color:var(--mw-border)]/50 text-[11px] leading-4 text-[color:var(--mw-text-muted)]">
+          <footer className="flex h-[28px] items-center justify-between gap-3 border-t border-[color:rgba(147,166,197,0.10)] text-[11px] leading-4 text-[color:var(--mw-text-muted)]">
             <p className="min-w-0 truncate">
               <span>All times are local to the exchange</span>
               <span aria-hidden="true" className="mx-2">

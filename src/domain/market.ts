@@ -125,6 +125,9 @@ export interface MarketQuote {
   previousClose: number | null;
   absoluteChange: number | null;
   percentageChange: number | null;
+  dayHigh?: number | null;
+  dayLow?: number | null;
+  intradaySeries?: number[] | null;
   currency: string | null;
   asOf: string | null;
   dataState: DataState;

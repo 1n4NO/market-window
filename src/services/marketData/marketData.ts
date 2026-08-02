@@ -112,6 +112,9 @@ export function createMarketQuote(input: {
   previousClose: number | null;
   absoluteChange: number | null;
   percentageChange: number | null;
+  dayHigh?: number | null;
+  dayLow?: number | null;
+  intradaySeries?: number[] | null;
   currency: string | null;
   asOf: string | null;
   dataState: MarketQuote['dataState'];
@@ -126,6 +129,9 @@ export function createMarketQuote(input: {
     previousClose: input.previousClose,
     absoluteChange: change.absoluteChange,
     percentageChange: change.percentageChange,
+    dayHigh: input.dayHigh ?? null,
+    dayLow: input.dayLow ?? null,
+    intradaySeries: input.intradaySeries ?? null,
     currency: input.currency,
     asOf: input.asOf,
     dataState: input.dataState,

@@ -11,7 +11,7 @@ export function StatusBadge({
   return (
     <span
       className={classNames(
-        'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em]',
+        'inline-flex items-center rounded-full border px-1.5 py-[1px] text-[9px] font-medium uppercase tracking-[0.12em]',
         tone === 'positive' &&
           'border-[color:var(--mw-positive)]/30 bg-[color:var(--mw-positive)]/10 text-[color:var(--mw-positive)]',
         tone === 'negative' &&
