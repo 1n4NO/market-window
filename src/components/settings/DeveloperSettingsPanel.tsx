@@ -38,7 +38,13 @@ function reorderMarket(settings: UserSettings, marketId: string, direction: -1 |
   };
 }
 
-export function DeveloperSettingsPanel() {
+export function DeveloperSettingsPanel({
+  title = 'Settings',
+  subtitle = 'Adjust market visibility, appearance, provider settings, quick links, and local storage.',
+}: {
+  title?: string;
+  subtitle?: string;
+}) {
   const { controller, snapshot } = useExtensionStorage();
   const [quickLinksText, setQuickLinksText] = useState(() => createQuickLinksJson(snapshot.settings.quickLinks));
   const [providerOverridesText, setProviderOverridesText] = useState(() =>
@@ -166,16 +172,14 @@ export function DeveloperSettingsPanel() {
   return (
     <section className="rounded-[1.75rem] border border-line bg-surface/70 p-5 shadow-glow">
       <div className="flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted">Developer settings</p>
-        <h2 className="text-2xl font-semibold tracking-tight">Persistence test bench</h2>
-        <p className="max-w-3xl text-sm leading-6 text-muted">
-          These controls exercise the phase 4 storage wrapper, migrations, and import/export flow.
-        </p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted">{title}</p>
+        <h2 className="text-2xl font-semibold tracking-tight">Preferences and local data</h2>
+        <p className="max-w-3xl text-sm leading-6 text-muted">{subtitle}</p>
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-line/80 bg-bg/50 p-4">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Markets</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Markets</h3>
           <div className="mt-4 space-y-3">
             {MARKET_DEFINITIONS.map((market) => {
               const enabled = snapshot.settings.enabledMarketIds.includes(market.id);

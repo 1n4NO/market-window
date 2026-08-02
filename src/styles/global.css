@@ -9,6 +9,43 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --mw-page: #05080f;
+  --mw-page-glow: rgba(78, 163, 255, 0.12);
+  --mw-panel: #0a111d;
+  --mw-panel-raised: #0f1727;
+  --mw-panel-inset: #08101b;
+  --mw-border: rgba(147, 166, 197, 0.16);
+  --mw-border-strong: rgba(147, 166, 197, 0.26);
+  --mw-focus: rgba(126, 178, 255, 0.88);
+  --mw-text: #eaf0fb;
+  --mw-text-secondary: #b3bfd4;
+  --mw-text-muted: #8492a8;
+  --mw-positive: #6ce49a;
+  --mw-negative: #ff8088;
+  --mw-warning: #f4c86f;
+  --mw-state-open: rgba(84, 212, 143, 0.18);
+  --mw-state-closed: rgba(125, 142, 168, 0.14);
+  --mw-state-pre-market: rgba(78, 163, 255, 0.18);
+  --mw-state-lunch-break: rgba(244, 200, 111, 0.18);
+  --mw-state-weekend: rgba(125, 142, 168, 0.12);
+  --mw-state-holiday: rgba(255, 128, 136, 0.14);
+  --mw-state-unknown: rgba(148, 163, 184, 0.14);
+  --mw-radius-card: 22px;
+  --mw-radius-pill: 999px;
+  --mw-radius-field: 18px;
+  --mw-space-page-x: 24px;
+  --mw-space-page-y: 24px;
+  --mw-space-section: 20px;
+  --mw-space-card: 16px;
+  --mw-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.34);
+  --mw-shadow-lift: 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 32px rgba(0, 0, 0, 0.22);
+  --mw-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --mw-market-nse: #58baff;
+  --mw-market-tse: #d8a15d;
+  --mw-market-lse: #77a1ff;
+  --mw-market-nyse: #7bd98f;
+  --mw-market-hkex: #ea7ba4;
+  --mw-market-xetra: #a78bfa;
 }
 
 html,
@@ -20,11 +57,12 @@ body,
 body {
   margin: 0;
   min-width: 320px;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   background:
-    radial-gradient(circle at top, rgba(78, 163, 255, 0.12), transparent 32%),
-    radial-gradient(circle at 85% 0%, rgba(139, 92, 246, 0.08), transparent 28%),
-    #05080f;
+    radial-gradient(circle at 20% 0%, rgba(78, 163, 255, 0.12), transparent 28%),
+    radial-gradient(circle at 82% 4%, rgba(139, 92, 246, 0.08), transparent 26%),
+    linear-gradient(180deg, #05080f 0%, #060b13 100%);
+  color: var(--mw-text);
 }
 
 * {
@@ -33,4 +71,13 @@ body {
 
 ::selection {
   background: rgba(78, 163, 255, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

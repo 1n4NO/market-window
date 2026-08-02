@@ -1,18 +1,27 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from './App';
 
-describe('App', () => {
-  it('renders the developer view and all bundled markets', () => {
+describe('App shell', () => {
+  it('renders the new-tab shell with header, search, and placeholder content', () => {
     render(<App />);
 
-    expect(screen.getByText('Clock engine developer view')).toBeInTheDocument();
-    expect(screen.getAllByText('NSE').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('TSE').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('LSE').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('NYSE').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('HKEX').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Xetra').length).toBeGreaterThan(0);
-    expect(screen.getByText('Persistence test bench')).toBeInTheDocument();
-    expect(screen.getAllByRole('article')).toHaveLength(6);
+    expect(screen.getByText('A calm market-hours dashboard for your new tab.')).toBeInTheDocument();
+    expect(screen.getByText('Market cards and timeline are next.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Search the web or enter a URL')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit Markets' })).toBeInTheDocument();
+    expect(screen.getByText('Nothing to render yet')).toBeInTheDocument();
+    expect(screen.getByText('Quick links')).toBeInTheDocument();
+  });
+
+  it('focuses the search field when the slash shortcut is pressed', () => {
+    render(<App />);
+
+    const search = screen.getByLabelText('Search the web or enter a URL');
+    expect(search).not.toHaveFocus();
+
+    fireEvent.keyDown(window, { key: '/', code: 'Slash' });
+
+    expect(search).toHaveFocus();
   });
 });
