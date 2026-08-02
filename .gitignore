@@ -1,0 +1,7 @@
+node_modules
+dist
+.zip-build
+market-window-extension.zip
+package-manifest.json
+coverage
+.DS_Store
