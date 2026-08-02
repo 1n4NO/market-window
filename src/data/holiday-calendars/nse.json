@@ -1,0 +1,21 @@
+{
+  "marketId": "nse",
+  "version": "2026.1",
+  "source": "NSE Trading Holidays 2026",
+  "years": {
+    "2026": {
+      "version": "2026.1",
+      "source": "NSE Trading Holidays 2026",
+      "holidays": [
+        {
+          "date": "2026-01-26",
+          "name": "Republic Day"
+        },
+        {
+          "date": "2026-08-15",
+          "name": "Independence Day"
+        }
+      ]
+    }
+  }
+}

@@ -8,10 +8,13 @@ import type {
   Weekday,
 } from '../../domain/market';
 import { WEEKDAYS } from '../../domain/market';
+import type {
+  HolidayConfidence,
+  HolidayLookupResult,
+  HolidayProvider,
+} from '../holidayProvider/holidayProvider';
 
-export interface HolidayProvider {
-  isHoliday(marketId: string, date: Date): Promise<boolean>;
-}
+export type { HolidayProvider } from '../holidayProvider/holidayProvider';
 
 interface DateParts {
   year: number;
@@ -156,7 +159,8 @@ async function buildSessionWindows(
 
   for (let offset = -SEARCH_DAYS_BEFORE; offset <= SEARCH_DAYS_AFTER; offset += 1) {
     const candidateParts = shiftLocalDateParts(localParts, offset);
-    if (await isHolidayForDate(market, holidayProvider, candidateParts)) {
+    const holiday = await evaluateHolidayForDate(market, holidayProvider, candidateParts);
+    if (holiday.confidence === 'confirmed' && holiday.isHoliday) {
       continue;
     }
     for (const session of market.sessions) {
@@ -371,24 +375,64 @@ function getHumanReadableNextAction(
   return null;
 }
 
-async function isHolidayForDate(
+async function evaluateHolidayForDate(
   market: MarketDefinition,
   holidayProvider: HolidayProvider | undefined,
   dateParts: DateParts,
-): Promise<boolean> {
+): Promise<HolidayLookupResult> {
   if (!holidayProvider) {
-    return false;
+    return {
+      marketId: market.id,
+      calendarVersion: null,
+      confidence: 'unknown',
+      isHoliday: false,
+      supportedYear: false,
+      source: null,
+      holiday: null,
+    };
   }
 
   const middayUtc = localDateTimeToUtc(market.timezone, dateParts, { hour: 12, minute: 0 });
   if (!isValidDate(middayUtc)) {
-    return false;
+    return {
+      marketId: market.id,
+      calendarVersion: null,
+      confidence: 'unknown',
+      isHoliday: false,
+      supportedYear: false,
+      source: null,
+      holiday: null,
+    };
+  }
+
+  const enrichedProvider = holidayProvider as HolidayProvider & {
+    evaluateHoliday?: (marketId: string, date: Date) => HolidayLookupResult | Promise<HolidayLookupResult>;
+  };
+
+  if (typeof enrichedProvider.evaluateHoliday === 'function') {
+    return await enrichedProvider.evaluateHoliday(market.id, middayUtc);
   }
 
   try {
-    return await holidayProvider.isHoliday(market.id, middayUtc);
+    return {
+      marketId: market.id,
+      calendarVersion: holidayProvider.getCalendarVersion(market.id),
+      confidence: 'confirmed',
+      isHoliday: await holidayProvider.isHoliday(market.id, middayUtc),
+      supportedYear: true,
+      source: null,
+      holiday: null,
+    };
   } catch {
-    return false;
+    return {
+      marketId: market.id,
+      calendarVersion: holidayProvider.getCalendarVersion(market.id),
+      confidence: 'unknown',
+      isHoliday: false,
+      supportedYear: true,
+      source: null,
+      holiday: null,
+    };
   }
 }
 
@@ -406,6 +450,7 @@ export async function getMarketClockState(
       activeSession: null,
       nextSession: null,
       nextAction: null,
+      holidayConfidence: 'unknown',
     };
   }
 
@@ -413,8 +458,15 @@ export async function getMarketClockState(
   const transitions = buildTransitionPoints(windows);
   const localParts = getLocalDateParts(instant, market.timezone);
   const currentDateKey = formatLocalDateKey(localParts);
-  const holidayToday = await isHolidayForDate(market, holidayProvider, localParts);
-  const scheduleState = getStateFromSchedule(market, instant, windows, currentDateKey, holidayToday);
+  const holidayToday = await evaluateHolidayForDate(market, holidayProvider, localParts);
+  const holidayConfidence: HolidayConfidence = holidayToday.confidence;
+  const scheduleState = getStateFromSchedule(
+    market,
+    instant,
+    windows,
+    currentDateKey,
+    holidayToday.confidence === 'confirmed' && holidayToday.isHoliday,
+  );
   const nextWindow = windows.find((window) => window.openAt.getTime() > instant.getTime()) ?? null;
   const transitionMetadata = getTransitionMetadata(instant, transitions);
 
@@ -437,6 +489,7 @@ export async function getMarketClockState(
       activeSession: null,
       nextSession: nextWindow?.session ?? null,
       nextAction: null,
+      holidayConfidence,
     };
   }
 
@@ -448,5 +501,6 @@ export async function getMarketClockState(
     activeSession: scheduleState.activeSession,
     nextSession: nextWindow?.session ?? null,
     nextAction,
+    holidayConfidence,
   };
 }

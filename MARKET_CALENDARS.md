@@ -1,44 +1,96 @@
 # Market Calendars
 
-This project keeps market schedules in `src/config/markets.ts`, not in components.
+Market holiday calendars are bundled as versioned JSON files under `src/data/holiday-calendars/`.
 
-## Adding Another Market
+## Structure
 
-1. Add a new `MarketDefinition` entry in `src/config/markets.ts`.
-2. Give the market a stable `id`.
-3. Set the display metadata:
-   - `exchangeCode`
-   - `country`
-   - `indexName`
-   - `timezone`
-   - `colorToken`
-   - `iconId`
-4. Define one or more `SessionDefinition` entries.
-   - Use explicit weekday names.
-   - Use `HH:mm` times.
-   - Add multiple sessions when the market has a lunch break or split session.
-5. Add one or more `ProviderSymbol` mappings.
-   - Do not assume the same symbol works for every provider.
-   - Mark the preferred mapping with `isDefault` if helpful.
-6. If you have holiday data, add a `HolidayDefinition` entry in the same typed domain model layer and wire it into the later holiday provider phase.
-7. Run validation through `validateMarketDefinition` or `validateMarketDefinitions` before saving imported or edited configuration.
+Each market gets one JSON bundle:
 
-## Validation Rules
+- `src/data/holiday-calendars/nse.json`
+- `src/data/holiday-calendars/tse.json`
+- `src/data/holiday-calendars/lse.json`
+- `src/data/holiday-calendars/nyse.json`
+- `src/data/holiday-calendars/hkex.json`
+- `src/data/holiday-calendars/xetra.json`
 
-- Market ids must be unique.
-- Session ids must be unique within a market.
-- Provider ids must be unique within a market.
-- Weekdays must be explicit and valid.
-- Session times must use `HH:mm`.
-- Arrays such as sessions, provider symbols, and quick links must not be empty when required.
+Each bundle uses this shape:
 
-## Provider Symbols
+```json
+{
+  "marketId": "nyse",
+  "version": "2026.1",
+  "source": "NYSE Holiday Schedule 2026",
+  "years": {
+    "2026": {
+      "version": "2026.1",
+      "source": "NYSE Holiday Schedule 2026",
+      "holidays": [
+        { "date": "2026-07-03", "name": "Independence Day", "observed": true }
+      ]
+    }
+  }
+}
+```
 
-Provider symbols are intentionally configurable because data vendors use different ticker formats.
+Rules:
 
-Examples:
+- `marketId` must match a supported market in `src/config/markets.ts`.
+- `version` is required at the bundle level and at each supported year.
+- `source` must name the calendar source clearly.
+- `holidays` is an array of explicit holiday entries.
+- Dates must use `YYYY-MM-DD`.
+- Holiday entries are not inferred. They must be listed explicitly.
 
-- Twelve Data may use exchange-prefixed symbols.
-- Another provider may use a plain index code.
+## Supported Years
 
-Keep those mappings in configuration, not in UI code.
+Phase 3 bundles 2026 calendars only.
+
+That means:
+
+- known holidays in 2026 are returned as confirmed holidays;
+- unsupported years return unknown holiday confidence;
+- the market-clock engine still falls back to weekday/session calculations when a year is not covered.
+
+## Annual Update Process
+
+To add a new calendar year:
+
+1. Update the relevant `src/data/holiday-calendars/<market>.json` file.
+2. Add a new year entry under `years`.
+3. Give the new year its own `version` and `source`.
+4. Add only explicit holiday dates from the exchange source.
+5. Run `npm run validate:holidays`.
+6. Run tests and the full build.
+
+## Validation
+
+Run the bundled calendar validator with:
+
+```bash
+npm run validate:holidays
+```
+
+The validator checks for:
+
+- malformed dates;
+- duplicate holiday entries;
+- unknown market IDs;
+- missing calendar versions.
+
+## Sources
+
+Calendar source names are recorded in the JSON bundles and should stay human-readable:
+
+- `NSE Trading Holidays 2026`
+- `JPX Trading Holidays 2026`
+- `LSE Market Holidays 2026`
+- `NYSE Holiday Schedule 2026`
+- `HKEX Holiday Calendar 2026`
+- `Xetra Holiday Schedule 2026`
+
+## Limitations
+
+- The bundled calendars only cover years that have been added explicitly.
+- Unknown years do not become fake trading days; the clock engine keeps the schedule-based result and marks holiday confidence as unknown.
+- No external holiday API is used in this phase.
+- The calendar set is intentionally conservative. If a closure is not listed, it is not implied.

@@ -1,7 +1,9 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { describe, expect, it } from 'vitest';
 import { MARKET_DEFINITIONS } from '../../config/markets';
+import { HOLIDAY_CALENDARS } from '../../data/holiday-calendars';
 import type { MarketDefinition } from '../../domain/market';
+import { BundledHolidayProvider } from '../holidayProvider/holidayProvider';
 import { getMarketClockState, type HolidayProvider } from './marketClock';
 
 function market(id: string): MarketDefinition {
@@ -105,6 +107,9 @@ describe('getMarketClockState', () => {
 
   it('marks a weekday holiday when the provider says the market is closed', async () => {
     const holidayProvider: HolidayProvider = {
+      getCalendarVersion() {
+        return 'mock-1';
+      },
       async isHoliday(marketId, date) {
         return marketId === 'nse' && formatInTimeZone(date, 'Asia/Kolkata', 'yyyy-MM-dd') === '2026-08-03';
       },
@@ -116,6 +121,16 @@ describe('getMarketClockState', () => {
     expect(result.nextTransitionAt).toBe('2026-08-04T03:45:00.000Z');
     expect(result.previousTransitionAt).toBe('2026-07-31T10:00:00.000Z');
     expect(result.nextAction).toBe('Opens tomorrow at 09:15');
+    expect(result.holidayConfidence).toBe('confirmed');
+  });
+
+  it('marks holiday confidence unknown for an unsupported calendar year', async () => {
+    const provider = new BundledHolidayProvider(HOLIDAY_CALENDARS);
+    const result = await getMarketClockState(market('nse'), new Date('2027-01-26T03:00:00.000Z'), provider);
+
+    expect(result.state).toBe('pre-market');
+    expect(result.holidayConfidence).toBe('unknown');
+    expect(result.nextAction).toBe('Opens in 45m');
   });
 
   it('returns weekend state and skips to the next trading session', async () => {

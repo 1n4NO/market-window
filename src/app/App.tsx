@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
+import { HOLIDAY_CALENDARS } from '../data/holiday-calendars';
 import { MARKET_DEFINITIONS } from '../config/markets';
 import type { MarketClockState } from '../domain/market';
 import { getMarketClockState } from '../services/marketClock/marketClock';
+import { createBundledHolidayProvider } from '../services/holidayProvider/holidayProvider';
 import { useCountdownText } from '../hooks/useCountdownText';
 
 function formatLocalDateTime(now: Date) {
@@ -11,6 +13,8 @@ function formatLocalDateTime(now: Date) {
     time: format(now, 'HH:mm:ss'),
   };
 }
+
+const holidayProvider = createBundledHolidayProvider(HOLIDAY_CALENDARS);
 
 export function App() {
   const [now, setNow] = useState(() => new Date());
@@ -26,7 +30,9 @@ export function App() {
 
     async function loadStates() {
       const entries = await Promise.all(
-        MARKET_DEFINITIONS.map(async (market) => [market.id, await getMarketClockState(market, now)] as const),
+        MARKET_DEFINITIONS.map(
+          async (market) => [market.id, await getMarketClockState(market, now, holidayProvider)] as const,
+        ),
       );
 
       if (!cancelled) {
@@ -125,6 +131,7 @@ function MarketStateCard({
         <DetailRow label="Active session" value={state?.activeSession?.label ?? 'none'} />
         <DetailRow label="Next session" value={state?.nextSession?.label ?? 'none'} />
         <DetailRow label="Next action" value={state?.nextAction ?? 'n/a'} />
+        <DetailRow label="Holiday confidence" value={state?.holidayConfidence ?? 'unknown'} />
         <DetailRow label="Countdown" value={countdown ?? 'n/a'} mono />
         <DetailRow label="Snapshot time" value={format(now, 'HH:mm:ss')} mono />
       </dl>

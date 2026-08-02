@@ -1,0 +1,17 @@
+{
+  "marketId": "tse",
+  "version": "2026.1",
+  "source": "JPX Trading Holidays 2026",
+  "years": {
+    "2026": {
+      "version": "2026.1",
+      "source": "JPX Trading Holidays 2026",
+      "holidays": [
+        {
+          "date": "2026-01-01",
+          "name": "New Year's Day"
+        }
+      ]
+    }
+  }
+}

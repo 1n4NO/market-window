@@ -73,6 +73,12 @@ npm run package
 
 Market definitions, session schedules, provider-symbol mappings, and validation rules live in `MARKET_CALENDARS.md` and `src/config/markets.ts`.
 
+Holiday calendar bundles can be validated with:
+
+```bash
+npm run validate:holidays
+```
+
 ## Unpacked Extension
 
 After building, load the `dist` folder as an unpacked extension in Chrome. The extension overrides the browser new-tab page through `newtab.html`.

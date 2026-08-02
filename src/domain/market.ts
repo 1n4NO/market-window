@@ -73,6 +73,7 @@ export interface MarketClockState {
   activeSession: SessionDefinition | null;
   nextSession: SessionDefinition | null;
   nextAction: string | null;
+  holidayConfidence: 'confirmed' | 'unknown';
 }
 
 export interface MarketQuote {

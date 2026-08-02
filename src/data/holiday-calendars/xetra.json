@@ -1,0 +1,17 @@
+{
+  "marketId": "xetra",
+  "version": "2026.1",
+  "source": "Xetra Holiday Schedule 2026",
+  "years": {
+    "2026": {
+      "version": "2026.1",
+      "source": "Xetra Holiday Schedule 2026",
+      "holidays": [
+        {
+          "date": "2026-12-25",
+          "name": "Christmas Day"
+        }
+      ]
+    }
+  }
+}

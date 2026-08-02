@@ -1,0 +1,17 @@
+{
+  "marketId": "lse",
+  "version": "2026.1",
+  "source": "LSE Market Holidays 2026",
+  "years": {
+    "2026": {
+      "version": "2026.1",
+      "source": "LSE Market Holidays 2026",
+      "holidays": [
+        {
+          "date": "2026-12-25",
+          "name": "Christmas Day"
+        }
+      ]
+    }
+  }
+}
