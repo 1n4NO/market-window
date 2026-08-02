@@ -69,6 +69,10 @@ Create a ZIP package with:
 npm run package
 ```
 
+## Market Configuration
+
+Market definitions, session schedules, provider-symbol mappings, and validation rules live in `MARKET_CALENDARS.md` and `src/config/markets.ts`.
+
 ## Unpacked Extension
 
 After building, load the `dist` folder as an unpacked extension in Chrome. The extension overrides the browser new-tab page through `newtab.html`.
