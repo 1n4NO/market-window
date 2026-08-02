@@ -15,6 +15,18 @@ This extension uses a provider-neutral market-data layer so the UI only ever see
 - `mock`
 - `twelvedata`
 
+## Market Movers
+
+- Market movers are an optional, feature-flagged module.
+- The module stays disabled by default.
+- The current shipped providers do not advertise `marketMovers` support.
+- When a future provider does support movers, it must explicitly disclose the universe it covers:
+  - exchange
+  - index-constituents
+  - provider-defined
+- Exchange-wide movers must never be shown as index-constituent movers.
+- Movers are cached separately from index quotes and refresh on a much longer interval to protect low API quotas.
+
 ## Known free-tier limitations
 
 - Twelve Data free plans may return delayed data or limited symbol coverage.

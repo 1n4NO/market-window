@@ -26,6 +26,7 @@ Domain services and side-effect adapters:
 - `marketClock/` calculates market state from timezones, sessions, and holiday data
 - `holidayProvider/` serves bundled calendar data
 - `marketData/` normalizes provider responses and manages quote caching
+- `marketMovers/` is an optional, isolated mover cache and view-model layer that stays disabled unless the feature flag is turned on
 - `storage/` wraps `chrome.storage.local`
 - `marketDashboard/` derives dashboard card, summary, and transition models
 - `marketTimeline/` projects sessions into the viewer's local timezone

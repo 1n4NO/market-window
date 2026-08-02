@@ -1,4 +1,10 @@
-import type { MarketDefinition, MarketQuote, ProviderSymbol } from '../../domain/market';
+import type {
+  MarketDefinition,
+  MarketMoversSnapshot,
+  MarketQuote,
+  ProviderCapabilities,
+  ProviderSymbol,
+} from '../../domain/market';
 
 export type ProviderValidationCode =
   | 'valid'
@@ -18,8 +24,10 @@ export interface ProviderValidationResult {
 
 export interface MarketDataProvider {
   id: string;
+  capabilities: ProviderCapabilities;
   validateApiKey(apiKey: string): Promise<ProviderValidationResult>;
   fetchQuote(market: MarketDefinition, apiKey: string): Promise<MarketQuote>;
+  fetchMovers?(market: MarketDefinition, apiKey: string): Promise<MarketMoversSnapshot>;
 }
 
 export type ProviderSymbolOverrideMap = Record<string, Record<string, string>>;

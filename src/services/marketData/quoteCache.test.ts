@@ -57,6 +57,12 @@ describe('quote cache service', () => {
     });
     const provider: MarketDataProvider = {
       id: 'mock',
+      capabilities: {
+        quotes: true,
+        historicalSeries: false,
+        marketMovers: false,
+        moverUniverse: 'unsupported',
+      },
       validateApiKey: async () => ({ valid: true, code: 'valid', message: null }),
       fetchQuote: fetchQuote as MarketDataProvider['fetchQuote'],
     };
@@ -140,6 +146,12 @@ describe('quote cache service', () => {
     });
     const provider: MarketDataProvider = {
       id: 'mock',
+      capabilities: {
+        quotes: true,
+        historicalSeries: false,
+        marketMovers: false,
+        moverUniverse: 'unsupported',
+      },
       validateApiKey: async () => ({ valid: true, code: 'valid', message: null }),
       fetchQuote,
     };
@@ -177,6 +189,12 @@ describe('quote cache service', () => {
 
     const provider: MarketDataProvider = {
       id: 'mock',
+      capabilities: {
+        quotes: true,
+        historicalSeries: false,
+        marketMovers: false,
+        moverUniverse: 'unsupported',
+      },
       validateApiKey: async () => ({ valid: true, code: 'valid', message: null }),
       fetchQuote: vi.fn(async (market: { id: string }) => {
         if (market.id === 'nse') {

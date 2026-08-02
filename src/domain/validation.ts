@@ -1,6 +1,7 @@
 import type {
   HolidayDefinition,
   MarketDefinition,
+  MarketMoverUniverse,
   ProviderSymbol,
   QuickLink,
   SessionDefinition,
@@ -206,6 +207,28 @@ export function validateMarketDefinition(value: unknown, path = 'markets[0]'): V
   }
   if ('notes' in value && value.notes !== undefined && !isString(value.notes)) {
     errors.push({ path: `${path}.notes`, message: 'notes must be a string when present.' });
+  }
+  if ('moverCoverage' in value && value.moverCoverage !== undefined) {
+    if (!isRecord(value.moverCoverage)) {
+      errors.push({ path: `${path}.moverCoverage`, message: 'moverCoverage must be an object when present.' });
+    } else if (
+      !Array.isArray(value.moverCoverage.supportedUniverses) ||
+      value.moverCoverage.supportedUniverses.length === 0
+    ) {
+      errors.push({
+        path: `${path}.moverCoverage.supportedUniverses`,
+        message: 'supportedUniverses must be a non-empty array when moverCoverage is present.',
+      });
+    } else if (
+      !value.moverCoverage.supportedUniverses.every((universe: unknown): universe is MarketMoverUniverse =>
+        universe === 'exchange' || universe === 'index-constituents' || universe === 'provider-defined',
+      )
+    ) {
+      errors.push({
+        path: `${path}.moverCoverage.supportedUniverses`,
+        message: 'supportedUniverses must only include exchange, index-constituents, or provider-defined.',
+      });
+    }
   }
 
   return errors.length > 0 ? failure(errors) : success(value as unknown as MarketDefinition);

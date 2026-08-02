@@ -22,6 +22,12 @@ const harness = vi.hoisted(() => {
     twelvedataProvider: null as
       | {
           id: string;
+          capabilities: {
+            quotes: boolean;
+            historicalSeries: boolean;
+            marketMovers: boolean;
+            moverUniverse: 'exchange' | 'index-constituents' | 'provider-defined' | 'unsupported';
+          };
           validateApiKey: ReturnType<typeof vi.fn>;
           fetchQuote: ReturnType<typeof vi.fn>;
         }
@@ -29,6 +35,12 @@ const harness = vi.hoisted(() => {
     mockProvider: null as
       | {
           id: string;
+          capabilities: {
+            quotes: boolean;
+            historicalSeries: boolean;
+            marketMovers: boolean;
+            moverUniverse: 'exchange' | 'index-constituents' | 'provider-defined' | 'unsupported';
+          };
           validateApiKey: ReturnType<typeof vi.fn>;
           fetchQuote: ReturnType<typeof vi.fn>;
         }
@@ -138,6 +150,12 @@ describe('SettingsDrawer', () => {
     };
     harness.twelvedataProvider = {
       id: 'twelvedata',
+      capabilities: {
+        quotes: true,
+        historicalSeries: false,
+        marketMovers: false,
+        moverUniverse: 'unsupported',
+      },
       validateApiKey: vi.fn(async (apiKey: string) => {
         if (apiKey === 'bad-key') {
           return {
@@ -163,6 +181,12 @@ describe('SettingsDrawer', () => {
     };
     harness.mockProvider = {
       id: 'mock',
+      capabilities: {
+        quotes: true,
+        historicalSeries: false,
+        marketMovers: false,
+        moverUniverse: 'unsupported',
+      },
       validateApiKey: vi.fn(async () => ({
         valid: true,
         code: 'valid',

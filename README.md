@@ -9,6 +9,7 @@ Market Window is a Chrome Manifest V3 new-tab extension that shows a global mark
 - Loads instantly from local cache and keeps working without an API key
 - Supports a user-owned Twelve Data API key stored in `chrome.storage.local`
 - Keeps all schedules, holiday calendars, and settings local to the browser
+- Includes an optional market-movers module that is disabled by default
 
 ## Requirements
 
@@ -90,6 +91,7 @@ No browsing history, active tab, or content-script permissions are requested.
 - Quote freshness depends on the selected provider and the market session.
 - Browser-local storage is convenient, but it does not make an API key secret.
 - Market-data requests go directly from the browser to the selected provider.
+- Optional movers support is only shown when a provider explicitly advertises it and discloses the mover universe.
 
 ## Project Structure
 

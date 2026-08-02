@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build && node scripts/postbuild.mjs",
     "preview": "vite preview",
-    "lint": "eslint .",
+    "lint": "eslint src scripts --ext .ts,.tsx,.js,.mjs --ignore-pattern release --ignore-pattern dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

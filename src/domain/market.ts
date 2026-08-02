@@ -34,6 +34,46 @@ export type DataState =
   | 'mock'
   | 'unavailable';
 
+export interface ProviderCapabilities {
+  quotes: boolean;
+  historicalSeries: boolean;
+  marketMovers: boolean;
+  moverUniverse: 'exchange' | 'index-constituents' | 'provider-defined' | 'unsupported';
+}
+
+export type MarketMoverUniverse = Exclude<ProviderCapabilities['moverUniverse'], 'unsupported'>;
+
+export type MarketMoverKind =
+  | 'largest_percentage_gainer'
+  | 'largest_percentage_loser'
+  | 'largest_absolute_percentage_move';
+
+export interface MarketMoverDefinition {
+  kind: MarketMoverKind;
+  symbol: string;
+  name: string;
+  value: number | null;
+  previousClose: number | null;
+  absoluteChange: number | null;
+  percentageChange: number | null;
+  asOf: string | null;
+  dataState: DataState;
+}
+
+export interface MarketMoversSnapshot {
+  marketId: string;
+  indexName: string;
+  provider: string;
+  universe: MarketMoverUniverse;
+  dataState: DataState;
+  asOf: string | null;
+  movers: MarketMoverDefinition[];
+}
+
+export interface MarketMoverCoverage {
+  supportedUniverses: MarketMoverUniverse[];
+}
+
 export interface SessionDefinition {
   id: string;
   label: string;
@@ -62,6 +102,7 @@ export interface MarketDefinition {
   sessions: SessionDefinition[];
   providerSymbols: ProviderSymbol[];
   holidayCalendarId?: string;
+  moverCoverage?: MarketMoverCoverage;
   notes?: string;
 }
 

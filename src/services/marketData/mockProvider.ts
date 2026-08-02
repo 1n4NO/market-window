@@ -7,6 +7,13 @@ const DEMO_PROVIDER_ID = 'mock';
 export class MockMarketDataProvider implements MarketDataProvider {
   id = DEMO_PROVIDER_ID;
 
+  capabilities = {
+    quotes: true,
+    historicalSeries: false,
+    marketMovers: false,
+    moverUniverse: 'unsupported',
+  } as const;
+
   async validateApiKey(apiKey: string): Promise<ProviderValidationResult> {
     if (apiKey.trim().length > 0) {
       return {
