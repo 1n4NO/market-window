@@ -1,17 +1,17 @@
+import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { classNames } from '../../utils/classNames';
 
-export function IconButton({
-  className,
-  children,
-  tone = 'default',
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  children: ReactNode;
-  tone?: 'default' | 'subtle';
-}) {
+export const IconButton = forwardRef<
+  HTMLButtonElement,
+  ButtonHTMLAttributes<HTMLButtonElement> & {
+    children: ReactNode;
+    tone?: 'default' | 'subtle';
+  }
+>(function IconButton({ className, children, tone = 'default', ...props }, ref) {
   return (
     <button
+      ref={ref}
       className={classNames(
         'inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--mw-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--mw-page)]',
@@ -21,8 +21,8 @@ export function IconButton({
         className,
       )}
       {...props}
-    >
-      {children}
-    </button>
-  );
-}
+      >
+        {children}
+      </button>
+    );
+});

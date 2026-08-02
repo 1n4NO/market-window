@@ -324,6 +324,8 @@ export function App() {
       <SettingsDrawer
         open={settingsOpen}
         initialSection={settingsSection}
+        marketStates={marketStates}
+        now={now}
         onClose={() => {
           setSettingsOpen(false);
         }}
