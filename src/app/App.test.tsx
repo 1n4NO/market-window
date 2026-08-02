@@ -6,12 +6,13 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('Clock engine developer view')).toBeInTheDocument();
-    expect(screen.getByText('NSE')).toBeInTheDocument();
-    expect(screen.getByText('TSE')).toBeInTheDocument();
-    expect(screen.getByText('LSE')).toBeInTheDocument();
-    expect(screen.getByText('NYSE')).toBeInTheDocument();
-    expect(screen.getByText('HKEX')).toBeInTheDocument();
-    expect(screen.getByText('Xetra')).toBeInTheDocument();
+    expect(screen.getAllByText('NSE').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('TSE').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('LSE').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('NYSE').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('HKEX').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Xetra').length).toBeGreaterThan(0);
+    expect(screen.getByText('Persistence test bench')).toBeInTheDocument();
     expect(screen.getAllByRole('article')).toHaveLength(6);
   });
 });

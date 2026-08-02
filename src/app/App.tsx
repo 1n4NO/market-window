@@ -6,6 +6,8 @@ import type { MarketClockState } from '../domain/market';
 import { getMarketClockState } from '../services/marketClock/marketClock';
 import { createBundledHolidayProvider } from '../services/holidayProvider/holidayProvider';
 import { useCountdownText } from '../hooks/useCountdownText';
+import { useExtensionStorage } from '../hooks/useExtensionStorage';
+import { DeveloperSettingsPanel } from '../components/settings/DeveloperSettingsPanel';
 
 function formatLocalDateTime(now: Date) {
   return {
@@ -18,7 +20,16 @@ const holidayProvider = createBundledHolidayProvider(HOLIDAY_CALENDARS);
 
 export function App() {
   const [now, setNow] = useState(() => new Date());
+  const { snapshot } = useExtensionStorage();
   const [states, setStates] = useState<Record<string, MarketClockState>>({});
+  const visibleMarkets = useMemo(() => {
+    const enabled = new Set(snapshot.settings.enabledMarketIds);
+    const order = new Map(snapshot.settings.marketOrder.map((marketId, index) => [marketId, index]));
+
+    return MARKET_DEFINITIONS.filter((market) => enabled.has(market.id)).sort(
+      (left, right) => (order.get(left.id) ?? Number.POSITIVE_INFINITY) - (order.get(right.id) ?? Number.POSITIVE_INFINITY),
+    );
+  }, [snapshot.settings.enabledMarketIds, snapshot.settings.marketOrder]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -30,7 +41,7 @@ export function App() {
 
     async function loadStates() {
       const entries = await Promise.all(
-        MARKET_DEFINITIONS.map(
+        visibleMarkets.map(
           async (market) => [market.id, await getMarketClockState(market, now, holidayProvider)] as const,
         ),
       );
@@ -45,7 +56,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [now]);
+  }, [now, visibleMarkets]);
 
   const { date, time } = useMemo(() => formatLocalDateTime(now), [now]);
 
@@ -73,7 +84,7 @@ export function App() {
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {MARKET_DEFINITIONS.map((market) => {
+          {visibleMarkets.map((market) => {
             const state = states[market.id];
             return (
               <MarketStateCard
@@ -87,7 +98,14 @@ export function App() {
               />
             );
           })}
+          {visibleMarkets.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-line bg-surface/40 p-5 text-sm text-muted md:col-span-2 xl:col-span-3">
+              No markets are enabled. Use the developer settings panel below to re-enable a market.
+            </div>
+          ) : null}
         </section>
+
+        <DeveloperSettingsPanel />
       </div>
     </main>
   );
