@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
-import { ArrowRight, LayoutGrid, Settings2 } from 'lucide-react';
+import { LayoutGrid, Settings2 } from 'lucide-react';
+import { MARKET_DEFINITIONS } from '../config/markets';
+import { HOLIDAY_CALENDARS } from '../data/holiday-calendars';
 import { useExtensionStorage } from '../hooks/useExtensionStorage';
+import { useMarketClockStates } from '../hooks/useMarketClockStates';
+import { MarketCardsGrid } from '../components/markets/MarketCardsGrid';
 import { SearchField } from '../components/layout/SearchField';
 import { Card } from '../components/layout/Card';
 import { IconButton } from '../components/layout/IconButton';
@@ -9,8 +13,11 @@ import { StatusBadge } from '../components/feedback/StatusBadge';
 import { DataStateLabel } from '../components/feedback/DataStateLabel';
 import { Countdown } from '../components/feedback/Countdown';
 import { EmptyState } from '../components/feedback/EmptyState';
-import { Skeleton } from '../components/feedback/Skeleton';
 import { SettingsDrawer } from '../components/settings/SettingsDrawer';
+import { MarketSummaryPanel, QuickLinksEditorPanel, UpcomingTransitionsPanel } from '../components/dashboard/DashboardPanels';
+import { MarketHoursTimeline } from '../components/timeline/MarketHoursTimeline';
+import { createBundledHolidayProvider } from '../services/holidayProvider/holidayProvider';
+import { buildMarketDashboardModel } from '../services/marketDashboard/marketDashboard';
 import { classNames } from '../utils/classNames';
 
 function getGreeting(hour: number): string {
@@ -38,11 +45,12 @@ function isEditableElement(target: EventTarget | null): boolean {
 }
 
 export function App() {
-  const { snapshot } = useExtensionStorage();
+  const { controller, snapshot } = useExtensionStorage();
   const [now, setNow] = useState(() => new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<'markets' | 'appearance' | 'provider' | 'data'>('markets');
   const searchRef = useRef<HTMLInputElement>(null);
+  const holidayProvider = useMemo(() => createBundledHolidayProvider(HOLIDAY_CALENDARS), []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -66,16 +74,21 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const appearance = snapshot.settings.appearance;
+  const settings = snapshot.settings;
+  const appearance = settings.appearance;
   const greeting = getGreeting(now.getHours());
-  const quickLinks = useMemo(
-    () =>
-      snapshot.settings.quickLinks
-        .filter((link) => link.enabled)
-        .slice()
-        .sort((left, right) => left.order - right.order),
-    [snapshot.settings.quickLinks],
+  const enabledMarkets = MARKET_DEFINITIONS.filter((market) => settings.enabledMarketIds.includes(market.id)).sort(
+    (left, right) => settings.marketOrder.indexOf(left.id) - settings.marketOrder.indexOf(right.id),
   );
+  const marketStates = useMarketClockStates({
+    markets: enabledMarkets,
+    instant: now,
+    holidayProvider,
+  });
+  const quoteEntries = Object.fromEntries(snapshot.quoteCache.quotes.map((entry) => [entry.marketId, entry])) as Record<
+    string,
+    (typeof snapshot.quoteCache.quotes)[number] | null
+  >;
   const nextTickAt = useMemo(() => new Date(now.getTime() + 1000), [now]);
   const hasApiKey = Boolean(snapshot.settings.dataProvider.apiKey?.trim());
   const providerLabel = hasApiKey
@@ -87,6 +100,26 @@ export function App() {
   const pagePadding = appearance.density === 'compact' ? 'px-4 py-4 sm:px-6' : 'px-4 py-5 sm:px-6 lg:px-8';
   const cardPadding = appearance.density === 'compact' ? 'p-4 sm:p-5' : 'p-5 sm:p-6';
   const clockClass = appearance.density === 'compact' ? 'text-4xl sm:text-5xl' : 'text-4xl sm:text-6xl';
+  const viewerTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dashboardModel = useMemo(
+    () =>
+      buildMarketDashboardModel({
+        markets: enabledMarkets,
+        marketStates,
+        quoteEntries,
+        now,
+        viewerTimeZone,
+        providerLabel,
+      }),
+    [enabledMarkets, marketStates, quoteEntries, now, viewerTimeZone, providerLabel],
+  );
+
+  async function saveQuickLinks(nextQuickLinks: typeof snapshot.settings.quickLinks): Promise<void> {
+    await controller.setSettings({
+      ...settings,
+      quickLinks: nextQuickLinks.map((link, index) => ({ ...link, order: index })),
+    });
+  }
 
   return (
     <main className="min-h-screen overflow-x-hidden text-[color:var(--mw-text)]">
@@ -109,8 +142,8 @@ export function App() {
                     </h1>
                   </div>
                   <p className="max-w-2xl text-sm leading-6 text-[color:var(--mw-text-secondary)]">
-                    Search from the header, jump to a URL, or open settings to tune the shell. Market cards and the timeline
-                    will arrive in the next phase.
+                    Search from the header, jump to a URL, or open settings to tune the shell. Market cards, summary, and
+                    transitions are live below.
                   </p>
                 </div>
                 <div className="rounded-[20px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-raised)] px-4 py-3 shadow-[var(--mw-shadow-lift)]">
@@ -208,103 +241,59 @@ export function App() {
           </div>
         </header>
 
+        <section className="grid gap-4">
+          <MarketHoursTimeline
+            className="w-full"
+            density={appearance.density}
+            marketStates={marketStates}
+            markets={enabledMarkets}
+            now={now}
+            viewerTimeZone={viewerTimeZone}
+          />
+        </section>
+
+        <section className="grid gap-4">
+          <MarketCardsGrid cards={dashboardModel.cards} now={now} />
+        </section>
+
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-          <Card className={classNames(cardPadding, 'min-h-[260px]')}>
-            <div className="flex h-full flex-col justify-between gap-6">
-              <div className="space-y-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Workspace</p>
-                <h2 className="max-w-xl text-2xl font-semibold tracking-tight text-[color:var(--mw-text)]">
-                  Market cards and timeline are next.
-                </h2>
-                <EmptyState
-                  title="Nothing to render yet"
-                  description="This shell is ready for the market grid, the 24-hour timeline, and the open/closed summaries that land in the next phase."
-                  action={
-                    <IconButton
-                      onClick={() => {
-                        setSettingsSection('markets');
-                        setSettingsOpen(true);
-                      }}
-                      type="button"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      Review markets
-                    </IconButton>
-                  }
-                />
+          <QuickLinksEditorPanel
+            onChange={(nextQuickLinks) => {
+              void saveQuickLinks(nextQuickLinks);
+            }}
+            quickLinks={snapshot.settings.quickLinks}
+            visible={appearance.showQuickLinks}
+          />
+
+          <div className="grid gap-4">
+            <MarketSummaryPanel summary={dashboardModel.summary} />
+            <UpcomingTransitionsPanel now={now} transitions={dashboardModel.transitions} />
+            <Card className={classNames(cardPadding, 'space-y-4')}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Shell</p>
+                  <h2 className="text-lg font-semibold text-[color:var(--mw-text)]">Layout settings</h2>
+                </div>
+                <StatusBadge tone="neutral">{appearance.clockFormat}</StatusBadge>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Density</p>
                   <p className="mt-3 text-sm font-medium text-[color:var(--mw-text)]">{appearance.density}</p>
-                </div>
-                <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Clock</p>
-                  <p className="mt-3 text-sm font-medium text-[color:var(--mw-text)]">{appearance.clockFormat}</p>
                 </div>
                 <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Provider</p>
                   <p className="mt-3 text-sm font-medium text-[color:var(--mw-text)]">{providerLabel}</p>
                 </div>
               </div>
-            </div>
-          </Card>
-
-          <Card className={classNames(cardPadding, 'space-y-4')}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Quick links</p>
-                <h2 className="text-lg font-semibold text-[color:var(--mw-text)]">Shortcuts</h2>
-              </div>
-              <StatusBadge tone="neutral">{appearance.showQuickLinks ? 'Visible' : 'Hidden'}</StatusBadge>
-            </div>
-            {appearance.showQuickLinks ? (
-              <div className="grid gap-2">
-                {quickLinks.length > 0 ? (
-                  quickLinks.map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      className={classNames(
-                        'group flex items-center justify-between rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] px-4 py-3',
-                        'transition hover:border-[color:var(--mw-border-strong)] hover:bg-white/[0.03]',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--mw-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--mw-page)]',
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-[color:var(--mw-text)]">{link.label}</p>
-                        <p className="truncate text-xs text-[color:var(--mw-text-muted)]">{link.url}</p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-[color:var(--mw-text-muted)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--mw-text)]" />
-                    </a>
-                  ))
-                ) : (
-                  <EmptyState
-                    title="No quick links yet"
-                    description="Add shortcuts from Settings to fill this space with your preferred finance and market destinations."
-                  />
-                )}
-              </div>
-            ) : (
-              <EmptyState
-                title="Quick links are hidden"
-                description="Turn them back on in Settings if you want the shortcut rail beneath the search area."
-              />
-            )}
-
-            <div className="grid gap-3">
               <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Motion</p>
                 <p className="mt-2 text-sm leading-6 text-[color:var(--mw-text-secondary)]">
-                  The shell keeps motion restrained. Reduced-motion users see the same hierarchy without animated chrome.
+                  Reduced-motion preferences keep transitions subdued while preserving the same hierarchy and information.
                 </p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Skeleton className="h-16" />
-                <Skeleton className="h-16" />
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </section>
 
         <footer className={classNames('grid gap-4 rounded-[22px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel)]', cardPadding)}>

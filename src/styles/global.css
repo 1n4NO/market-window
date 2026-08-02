@@ -40,12 +40,18 @@
   --mw-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.34);
   --mw-shadow-lift: 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 32px rgba(0, 0, 0, 0.22);
   --mw-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --mw-market-nse: #58baff;
-  --mw-market-tse: #d8a15d;
-  --mw-market-lse: #77a1ff;
-  --mw-market-nyse: #7bd98f;
-  --mw-market-hkex: #ea7ba4;
-  --mw-market-xetra: #a78bfa;
+  --mw-market-india: #58baff;
+  --mw-market-japan: #d8a15d;
+  --mw-market-uk: #77a1ff;
+  --mw-market-us: #7bd98f;
+  --mw-market-hk: #ea7ba4;
+  --mw-market-germany: #a78bfa;
+  --mw-market-nse: var(--mw-market-india);
+  --mw-market-tse: var(--mw-market-japan);
+  --mw-market-lse: var(--mw-market-uk);
+  --mw-market-nyse: var(--mw-market-us);
+  --mw-market-hkex: var(--mw-market-hk);
+  --mw-market-xetra: var(--mw-market-germany);
 }
 
 html,

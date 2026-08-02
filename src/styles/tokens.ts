@@ -56,12 +56,18 @@ export const shadowTokens = {
 } as const;
 
 export const marketColorTokens = {
-  nse: 'var(--mw-market-nse)',
-  tse: 'var(--mw-market-tse)',
-  lse: 'var(--mw-market-lse)',
-  nyse: 'var(--mw-market-nyse)',
-  hkex: 'var(--mw-market-hkex)',
-  xetra: 'var(--mw-market-xetra)',
+  'market-india': 'var(--mw-market-india)',
+  'market-japan': 'var(--mw-market-japan)',
+  'market-uk': 'var(--mw-market-uk)',
+  'market-us': 'var(--mw-market-us)',
+  'market-hk': 'var(--mw-market-hk)',
+  'market-germany': 'var(--mw-market-germany)',
+  nse: 'var(--mw-market-india)',
+  tse: 'var(--mw-market-japan)',
+  lse: 'var(--mw-market-uk)',
+  nyse: 'var(--mw-market-us)',
+  hkex: 'var(--mw-market-hk)',
+  xetra: 'var(--mw-market-germany)',
 } as const;
 
 type MarketAccentStyle = CSSProperties & {

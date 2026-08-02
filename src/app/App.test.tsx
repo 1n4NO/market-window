@@ -2,16 +2,15 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from './App';
 
 describe('App shell', () => {
-  it('renders the new-tab shell with header, search, and placeholder content', () => {
+  it('renders the finished dashboard shell', () => {
     render(<App />);
 
-    expect(screen.getByText('A calm market-hours dashboard for your new tab.')).toBeInTheDocument();
-    expect(screen.getByText('Market cards and timeline are next.')).toBeInTheDocument();
+    expect(screen.getByText('Primary index cards')).toBeInTheDocument();
+    expect(screen.getByText('Your search bar, front and center')).toBeInTheDocument();
     expect(screen.getByLabelText('Search the web or enter a URL')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Markets' })).toBeInTheDocument();
-    expect(screen.getByText('Nothing to render yet')).toBeInTheDocument();
-    expect(screen.getByText('Quick links')).toBeInTheDocument();
+    expect(screen.getByText('Editable shortcuts')).toBeInTheDocument();
   });
 
   it('focuses the search field when the slash shortcut is pressed', () => {

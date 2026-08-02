@@ -11,5 +11,5 @@ const toneMap: Record<DataState, 'neutral' | 'positive' | 'warning' | 'negative'
 };
 
 export function DataStateLabel({ state }: { state: DataState }) {
-  return <StatusBadge tone={toneMap[state]}>{state.replace('-', ' ')}</StatusBadge>;
+  return <StatusBadge tone={toneMap[state]}>{state.replace(/-/g, ' ')}</StatusBadge>;
 }
