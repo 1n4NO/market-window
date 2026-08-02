@@ -13,11 +13,13 @@ import { StatusBadge } from '../components/feedback/StatusBadge';
 import { DataStateLabel } from '../components/feedback/DataStateLabel';
 import { Countdown } from '../components/feedback/Countdown';
 import { EmptyState } from '../components/feedback/EmptyState';
+import { ErrorBoundary } from '../components/feedback/ErrorBoundary';
 import { SettingsDrawer } from '../components/settings/SettingsDrawer';
 import { MarketSummaryPanel, QuickLinksEditorPanel, UpcomingTransitionsPanel } from '../components/dashboard/DashboardPanels';
 import { MarketHoursTimeline } from '../components/timeline/MarketHoursTimeline';
 import { createBundledHolidayProvider } from '../services/holidayProvider/holidayProvider';
 import { buildMarketDashboardModel } from '../services/marketDashboard/marketDashboard';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { classNames } from '../utils/classNames';
 
 function getGreeting(hour: number): string {
@@ -51,6 +53,7 @@ export function App() {
   const [settingsSection, setSettingsSection] = useState<'markets' | 'appearance' | 'provider' | 'data'>('markets');
   const searchRef = useRef<HTMLInputElement>(null);
   const holidayProvider = useMemo(() => createBundledHolidayProvider(HOLIDAY_CALENDARS), []);
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -129,7 +132,11 @@ export function App() {
       />
       <div className={classNames('relative mx-auto flex w-full max-w-7xl flex-col', pagePadding, shellDensity)}>
         <header className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_auto] xl:items-start">
-          <Card className={classNames(cardPadding, 'relative overflow-hidden')}>
+          <ErrorBoundary
+            fallbackMessage="The header could not render. The rest of the dashboard is still available."
+            fallbackTitle="Header unavailable"
+          >
+            <Card className={classNames(cardPadding, 'relative overflow-hidden')}>
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(78,163,255,0.08),transparent_38%,rgba(139,92,246,0.06))]" />
             <div className="relative flex flex-col gap-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -186,11 +193,16 @@ export function App() {
                 </IconButton>
               </div>
             </div>
-          </Card>
+            </Card>
+          </ErrorBoundary>
 
           <div className="grid gap-4">
-            <Card className={classNames(cardPadding, 'min-h-[180px]')}>
-              <div className="flex h-full flex-col justify-between gap-4">
+            <ErrorBoundary
+              fallbackMessage="The search field could not render. You can still use the dashboard below."
+              fallbackTitle="Search unavailable"
+            >
+              <Card className={classNames(cardPadding, 'min-h-[180px]')}>
+                <div className="flex h-full flex-col justify-between gap-4">
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">At a glance</p>
                   <h2 className="text-xl font-semibold text-[color:var(--mw-text)]">Your search bar, front and center</h2>
@@ -207,17 +219,25 @@ export function App() {
                     description="Turn the search field back on from Settings if you want the quick URL/search launcher in the header."
                   />
                 )}
-              </div>
-            </Card>
-
-            <Card className={classNames(cardPadding, 'space-y-4')}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Provider</p>
-                  <h2 className="text-lg font-semibold text-[color:var(--mw-text)]">Data source</h2>
                 </div>
-                <StatusBadge tone={hasApiKey ? 'positive' : 'neutral'}>{providerLabel}</StatusBadge>
-              </div>
+              </Card>
+            </ErrorBoundary>
+
+            <ErrorBoundary
+              fallbackMessage="The provider summary could not render. Cached market clock data is still available."
+              fallbackTitle="Provider panel unavailable"
+            >
+              <Card className={classNames(cardPadding, 'space-y-4')}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Provider</p>
+                    <h2 className="text-lg font-semibold text-[color:var(--mw-text)]">Data source</h2>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <StatusBadge tone={hasApiKey ? 'positive' : 'neutral'}>{providerLabel}</StatusBadge>
+                    <StatusBadge tone={isOnline ? 'positive' : 'warning'}>{isOnline ? 'Online' : 'Offline'}</StatusBadge>
+                  </div>
+                </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Data state</p>
@@ -237,99 +257,142 @@ export function App() {
                   </p>
                 </div>
               </div>
-            </Card>
+              </Card>
+            </ErrorBoundary>
           </div>
         </header>
 
         <section className="grid gap-4">
-          <MarketHoursTimeline
-            className="w-full"
-            density={appearance.density}
-            marketStates={marketStates}
-            markets={enabledMarkets}
-            now={now}
-            viewerTimeZone={viewerTimeZone}
-          />
+          <ErrorBoundary
+            fallbackMessage="The market-hours timeline failed to render. The dashboard shell remains available."
+            fallbackTitle="Timeline unavailable"
+          >
+            <MarketHoursTimeline
+              className="w-full"
+              density={appearance.density}
+              marketStates={marketStates}
+              markets={enabledMarkets}
+              now={now}
+              viewerTimeZone={viewerTimeZone}
+            />
+          </ErrorBoundary>
         </section>
 
         <section className="grid gap-4">
-          <MarketCardsGrid cards={dashboardModel.cards} now={now} />
+          <ErrorBoundary
+            fallbackMessage="The market cards could not render. Cached clock data and settings are still available."
+            fallbackTitle="Market cards unavailable"
+          >
+            <MarketCardsGrid cards={dashboardModel.cards} now={now} />
+          </ErrorBoundary>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-          <QuickLinksEditorPanel
-            onChange={(nextQuickLinks) => {
-              void saveQuickLinks(nextQuickLinks);
-            }}
-            quickLinks={snapshot.settings.quickLinks}
-            visible={appearance.showQuickLinks}
-          />
+          <ErrorBoundary
+            fallbackMessage="The quick-links panel failed to render. Your dashboard still loads normally."
+            fallbackTitle="Quick links unavailable"
+          >
+            <QuickLinksEditorPanel
+              onChange={(nextQuickLinks) => {
+                void saveQuickLinks(nextQuickLinks);
+              }}
+              quickLinks={snapshot.settings.quickLinks}
+              visible={appearance.showQuickLinks}
+            />
+          </ErrorBoundary>
 
           <div className="grid gap-4">
-            <MarketSummaryPanel summary={dashboardModel.summary} />
-            <UpcomingTransitionsPanel now={now} transitions={dashboardModel.transitions} />
-            <Card className={classNames(cardPadding, 'space-y-4')}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Shell</p>
-                  <h2 className="text-lg font-semibold text-[color:var(--mw-text)]">Layout settings</h2>
+            <ErrorBoundary
+              fallbackMessage="The market summary panel failed to render. Other dashboard sections are unaffected."
+              fallbackTitle="Summary unavailable"
+            >
+              <MarketSummaryPanel summary={dashboardModel.summary} />
+            </ErrorBoundary>
+            <ErrorBoundary
+              fallbackMessage="The upcoming transitions panel failed to render. Market clocks remain available."
+              fallbackTitle="Transitions unavailable"
+            >
+              <UpcomingTransitionsPanel now={now} transitions={dashboardModel.transitions} />
+            </ErrorBoundary>
+            <ErrorBoundary
+              fallbackMessage="The layout settings panel failed to render. The rest of the dashboard is still available."
+              fallbackTitle="Layout panel unavailable"
+            >
+              <Card className={classNames(cardPadding, 'space-y-4')}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Shell</p>
+                    <h2 className="text-lg font-semibold text-[color:var(--mw-text)]">Layout settings</h2>
+                  </div>
+                  <StatusBadge tone="neutral">{appearance.clockFormat}</StatusBadge>
                 </div>
-                <StatusBadge tone="neutral">{appearance.clockFormat}</StatusBadge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Density</p>
+                    <p className="mt-3 text-sm font-medium text-[color:var(--mw-text)]">{appearance.density}</p>
+                  </div>
+                  <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Provider</p>
+                    <p className="mt-3 text-sm font-medium text-[color:var(--mw-text)]">{providerLabel}</p>
+                  </div>
+                </div>
                 <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Density</p>
-                  <p className="mt-3 text-sm font-medium text-[color:var(--mw-text)]">{appearance.density}</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Motion</p>
+                  <p className="mt-2 text-sm leading-6 text-[color:var(--mw-text-secondary)]">
+                    Reduced-motion preferences keep transitions subdued while preserving the same hierarchy and information.
+                  </p>
                 </div>
-                <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Provider</p>
-                  <p className="mt-3 text-sm font-medium text-[color:var(--mw-text)]">{providerLabel}</p>
-                </div>
-              </div>
-              <div className="rounded-[18px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Motion</p>
-                <p className="mt-2 text-sm leading-6 text-[color:var(--mw-text-secondary)]">
-                  Reduced-motion preferences keep transitions subdued while preserving the same hierarchy and information.
-                </p>
-              </div>
-            </Card>
+              </Card>
+            </ErrorBoundary>
           </div>
         </section>
 
-        <footer className={classNames('grid gap-4 rounded-[22px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel)]', cardPadding)}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Footer</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge tone={hasApiKey ? 'positive' : 'neutral'}>Provider: {providerLabel}</StatusBadge>
-                <StatusBadge tone="neutral">Data-state legend</StatusBadge>
+        <ErrorBoundary
+          fallbackMessage="The footer failed to render. The dashboard shell remains usable."
+          fallbackTitle="Footer unavailable"
+        >
+          <footer className={classNames('grid gap-4 rounded-[22px] border border-[color:var(--mw-border)] bg-[color:var(--mw-panel)]', cardPadding)}>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-3">
+                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--mw-text-muted)]">Footer</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge tone={hasApiKey ? 'positive' : 'neutral'}>Provider: {providerLabel}</StatusBadge>
+                  <StatusBadge tone="neutral">Data-state legend</StatusBadge>
+                  <StatusBadge tone={isOnline ? 'positive' : 'warning'}>{isOnline ? 'Online' : 'Offline'}</StatusBadge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <DataStateLabel state={hasApiKey ? 'cached' : 'mock'} />
+                  <DataStateLabel state="delayed" />
+                  <DataStateLabel state="end-of-day" />
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <DataStateLabel state={hasApiKey ? 'cached' : 'mock'} />
-                <DataStateLabel state="delayed" />
-                <DataStateLabel state="end-of-day" />
+              <div className="grid gap-1 text-sm text-[color:var(--mw-text-secondary)]">
+                <p>
+                  Latest successful refresh: <span className="font-mono tabular-nums text-[color:var(--mw-text)]">{snapshot.quoteCache.lastSuccessfulRefreshAt ?? 'none'}</span>
+                </p>
+                <p>Market information is for informational purposes only.</p>
+                <p>Twelve Data attribution applies when the provider is selected.</p>
               </div>
             </div>
-            <div className="grid gap-1 text-sm text-[color:var(--mw-text-secondary)]">
-              <p>
-                Latest successful refresh: <span className="font-mono tabular-nums text-[color:var(--mw-text)]">{snapshot.quoteCache.lastSuccessfulRefreshAt ?? 'none'}</span>
-              </p>
-              <p>Market information is for informational purposes only.</p>
-              <p>Twelve Data attribution applies when the provider is selected.</p>
-            </div>
-          </div>
-        </footer>
+          </footer>
+        </ErrorBoundary>
       </div>
 
-      <SettingsDrawer
-        open={settingsOpen}
-        initialSection={settingsSection}
-        marketStates={marketStates}
-        now={now}
-        onClose={() => {
-          setSettingsOpen(false);
-        }}
-      />
+      <ErrorBoundary
+        fallbackMessage="The settings drawer failed to open. Reloading the page will restore access."
+        fallbackTitle="Settings unavailable"
+        resetKeys={[settingsOpen, settingsSection]}
+      >
+        <SettingsDrawer
+          open={settingsOpen}
+          initialSection={settingsSection}
+          marketStates={marketStates}
+          now={now}
+          onClose={() => {
+            setSettingsOpen(false);
+          }}
+        />
+      </ErrorBoundary>
     </main>
   );
 }

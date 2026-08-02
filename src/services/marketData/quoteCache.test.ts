@@ -40,6 +40,7 @@ describe('quote cache service', () => {
       fetchedAt: fetchedAt.toISOString(),
       providerTimestamp: '2026-08-02T09:00:00.000Z',
       expiresAt: expiry.toISOString(),
+      retryAfterAt: null,
       providerId: 'twelvedata',
     };
 
@@ -127,18 +128,20 @@ describe('quote cache service', () => {
           fetchedAt: '2026-08-02T09:00:00.000Z',
           providerTimestamp: '2026-08-02T09:00:00.000Z',
           expiresAt: '2026-08-02T09:05:00.000Z',
+          retryAfterAt: null,
           providerId: 'mock',
         },
       ],
       lastSuccessfulRefreshAt: '2026-08-02T09:00:00.000Z',
     });
 
+    const fetchQuote = vi.fn(async () => {
+      throw new MarketDataError('provider_unavailable', 'boom');
+    });
     const provider: MarketDataProvider = {
       id: 'mock',
       validateApiKey: async () => ({ valid: true, code: 'valid', message: null }),
-      fetchQuote: async () => {
-        throw new MarketDataError('provider_unavailable', 'boom');
-      },
+      fetchQuote,
     };
     const service = new MarketQuoteCacheService(controller, { mock: provider });
 
@@ -153,5 +156,62 @@ describe('quote cache service', () => {
     expect(results[0].status).toBe('failed');
     expect(controller.getSnapshot().quoteCache.quotes[0].quote.value).toBe(24600);
     expect(controller.getSnapshot().quoteCache.lastSuccessfulRefreshAt).toBe('2026-08-02T09:00:00.000Z');
+    expect(controller.getSnapshot().quoteCache.quotes[0].retryAfterAt).toBe('2026-08-02T09:25:00.000Z');
+
+    const secondResults = await service.refreshQuotes({
+      markets: [MARKET_DEFINITIONS[0]],
+      marketStates: { [MARKET_DEFINITIONS[0].id]: createOpenState() },
+      providerId: 'mock',
+      apiKey: '',
+      now: new Date('2026-08-02T09:10:00.000Z'),
+    });
+
+    expect(fetchQuote).toHaveBeenCalledTimes(1);
+    expect(secondResults[0].status).toBe('cached');
+  });
+
+  it('keeps healthy markets refreshing when one market fails', async () => {
+    const adapter = createMemoryStorageAdapter();
+    const controller = new ExtensionStorageController(adapter);
+    await controller.ready();
+
+    const provider: MarketDataProvider = {
+      id: 'mock',
+      validateApiKey: async () => ({ valid: true, code: 'valid', message: null }),
+      fetchQuote: vi.fn(async (market: { id: string }) => {
+        if (market.id === 'nse') {
+          throw new MarketDataError('provider_unavailable', 'boom');
+        }
+        return createMarketQuote({
+          marketId: market.id,
+          symbol: 'LSE:FTSE',
+          indexName: 'FTSE 100',
+          value: 8400,
+          previousClose: 8390,
+          absoluteChange: null,
+          percentageChange: null,
+          currency: 'GBP',
+          asOf: '2026-08-02T09:10:00.000Z',
+          dataState: 'mock',
+          provider: 'mock',
+        });
+      }),
+    };
+    const service = new MarketQuoteCacheService(controller, { mock: provider });
+
+    const results = await service.refreshQuotes({
+      markets: [MARKET_DEFINITIONS[0], MARKET_DEFINITIONS[2]],
+      marketStates: {
+        [MARKET_DEFINITIONS[0].id]: createOpenState(),
+        [MARKET_DEFINITIONS[2].id]: createOpenState(),
+      },
+      providerId: 'mock',
+      apiKey: '',
+      now: new Date('2026-08-02T09:10:00.000Z'),
+    });
+
+    expect(results.find((result) => result.marketId === 'nse')?.status).toBe('failed');
+    expect(results.find((result) => result.marketId === 'lse')?.status).toBe('updated');
+    expect(controller.getSnapshot().quoteCache.quotes).toHaveLength(2);
   });
 });

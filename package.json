@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "package": "node scripts/package-extension.mjs",
-    "validate:holidays": "node scripts/validate-holiday-calendars.mjs"
+    "validate:holidays": "node scripts/validate-holiday-calendars.mjs",
+    "validate:manifest": "node scripts/validate-manifest.mjs"
   },
   "dependencies": {
     "date-fns": "^4.1.0",

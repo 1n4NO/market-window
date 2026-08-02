@@ -1,43 +1,29 @@
 # Market Window
 
-Market Window is a Chrome Manifest V3 new-tab extension foundation for a global market-hours dashboard.
+Market Window is a Chrome Manifest V3 new-tab extension that shows a global market-hours dashboard with local market clocks, cached quotes, and provider-aware market data.
 
-## Phase 0
+## What It Does
 
-This phase sets up the repository foundation only:
+- Replaces Chrome's new-tab page through `chrome_url_overrides.newtab`
+- Shows market open/close states, session transitions, and countdowns
+- Loads instantly from local cache and keeps working without an API key
+- Supports a user-owned Twelve Data API key stored in `chrome.storage.local`
+- Keeps all schedules, holiday calendars, and settings local to the browser
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- Chrome Manifest V3
-- strict TypeScript, ESLint, Prettier, Vitest, and React Testing Library
-- a minimal new-tab shell
+## Requirements
 
-Market logic, API integration, caching, and settings will be added in later phases.
+- Node.js 20 or newer
+- Chrome or Chromium with Manifest V3 support
 
-## Installation
+## Install Dependencies
 
-1. Install dependencies:
-
-   ```bash
-   npm install
-   ```
-
-2. Build the extension:
-
-   ```bash
-   npm run build
-   ```
-
-3. Open `chrome://extensions`.
-4. Enable Developer mode.
-5. Click `Load unpacked`.
-6. Select the project `dist` folder.
+```bash
+npm install
+```
 
 ## Development
 
-Start the Vite dev server:
+Run the Vite dev server:
 
 ```bash
 npm run dev
@@ -45,15 +31,36 @@ npm run dev
 
 ## Production Build
 
-Create the production bundle with:
+Build the extension bundle:
 
 ```bash
 npm run build
 ```
 
-## Tests and Checks
+## Packaged Release Artifacts
 
-Run the full local verification set with:
+Create the unpacked extension folder and the Chrome Web Store ZIP:
+
+```bash
+npm run package
+```
+
+This writes:
+
+- `release/unpacked-extension/`
+- `release/market-window-extension.zip`
+
+## Load As An Unpacked Extension
+
+1. Run `npm run build`.
+2. Open `chrome://extensions`.
+3. Enable Developer mode.
+4. Click `Load unpacked`.
+5. Select `release/unpacked-extension/`.
+
+## Tests And Checks
+
+Run the local verification suite:
 
 ```bash
 npm run lint
@@ -61,24 +68,69 @@ npm run typecheck
 npm run test
 ```
 
-## Packaging
-
-Create a ZIP package with:
-
-```bash
-npm run package
-```
-
-## Market Configuration
-
-Market definitions, session schedules, provider-symbol mappings, and validation rules live in `MARKET_CALENDARS.md` and `src/config/markets.ts`.
-
-Holiday calendar bundles can be validated with:
+Validate bundled holiday calendars:
 
 ```bash
 npm run validate:holidays
 ```
 
-## Unpacked Extension
+## Permissions
 
-After building, load the `dist` folder as an unpacked extension in Chrome. The extension overrides the browser new-tab page through `newtab.html`.
+The extension uses only:
+
+- `storage`
+- `https://api.twelvedata.com/*`
+
+No browsing history, active tab, or content-script permissions are requested.
+
+## Data Limitations
+
+- Demo mode works without an API key and is clearly labeled.
+- Twelve Data free-tier responses may be delayed or end-of-day.
+- Quote freshness depends on the selected provider and the market session.
+- Browser-local storage is convenient, but it does not make an API key secret.
+- Market-data requests go directly from the browser to the selected provider.
+
+## Project Structure
+
+The codebase keeps domain logic separate from React components:
+
+- `src/domain/`
+- `src/config/`
+- `src/services/`
+- `src/components/`
+- `src/hooks/`
+
+## Adding Another Market
+
+1. Add the market definition in `src/config/markets.ts`.
+2. Add provider-symbol mappings in the market definition.
+3. Add the market's holiday calendar bundle under `src/data/holiday-calendars/`.
+4. Update `MARKET_CALENDARS.md` with the calendar source and supported year.
+5. Add tests for market-clock and dashboard behavior.
+
+## Adding Another Data Provider
+
+1. Implement `MarketDataProvider` in `src/services/marketData/`.
+2. Normalize the provider response into `MarketQuote`.
+3. Register the provider in `src/services/marketData/providerRegistry.ts`.
+4. Add validation and cache tests for the provider.
+5. Update the settings drawer if the provider needs extra configuration.
+
+## Documentation
+
+- [Architecture](./ARCHITECTURE.md)
+- [Data Providers](./DATA_PROVIDERS.md)
+- [Market Calendars](./MARKET_CALENDARS.md)
+- [Privacy](./PRIVACY.md)
+- [Chrome Web Store Assets Checklist](./CHROME_WEB_STORE_ASSETS.md)
+- [Changelog](./CHANGELOG.md)
+
+## Chrome Web Store Packaging
+
+Before upload:
+
+1. Run `npm run build`.
+2. Run `npm run package`.
+3. Verify the icon set, screenshots, and store listing copy.
+4. Upload `release/market-window-extension.zip`.

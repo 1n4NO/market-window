@@ -64,6 +64,7 @@ function createQuoteEntry(input: {
     fetchedAt: '2026-08-02T07:50:00.000Z',
     providerTimestamp: input.asOf,
     expiresAt: '2026-08-02T08:05:00.000Z',
+    retryAfterAt: null,
     providerId: 'twelvedata',
   };
 }

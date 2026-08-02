@@ -21,6 +21,13 @@ This extension uses a provider-neutral market-data layer so the UI only ever see
 - Rate limits can be hit if many markets refresh at once.
 - Some symbols can be unavailable on lower plans or for specific exchanges.
 - Quote availability and latency depend on the selected plan and the provider’s current API behavior.
+- The UI labels delayed, cached, end-of-day, mock, and unavailable data explicitly so the user does not have to infer freshness from color alone.
+
+## Demo Mode
+
+- When no API key is configured, the extension falls back to bundled mock fixtures.
+- Demo quotes are clearly labeled as demo data.
+- Market clock calculations still run normally in demo mode.
 
 ## API-key exposure
 
@@ -42,3 +49,12 @@ This extension uses a provider-neutral market-data layer so the UI only ever see
 - Market definitions carry the default provider symbols.
 - Users can override provider symbols in settings for exchanges that need a different ticker.
 - Validation runs market by market so one unavailable symbol does not block the others.
+- A failed or missing symbol only affects the market that uses it.
+
+## Refresh Strategy
+
+- Cached quotes are rendered immediately.
+- Refreshes only run when the cache is stale.
+- Concurrent refreshes are deduplicated.
+- Closed markets use longer cache windows than open markets.
+- Failed refreshes keep the previous cache visible and apply a retry backoff so repeated tab opens do not hammer the provider.

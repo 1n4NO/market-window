@@ -19,6 +19,7 @@ export const OPEN_MARKET_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 export const BREAK_MARKET_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 export const CLOSED_MARKET_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
 export const POST_CLOSE_REFRESH_GRACE_MS = 5 * 60 * 1000;
+export const REFRESH_FAILURE_BACKOFF_MS = 15 * 60 * 1000;
 
 export type QuoteRefreshStatus = 'updated' | 'cached' | 'skipped' | 'failed';
 
@@ -45,6 +46,22 @@ function toDate(value: string | null): Date | null {
   }
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getFailureBackoffForState(state: MarketClockState['state']): number {
+  switch (state) {
+    case 'open':
+    case 'pre-market':
+      return REFRESH_FAILURE_BACKOFF_MS;
+    case 'lunch-break':
+      return BREAK_MARKET_REFRESH_INTERVAL_MS;
+    case 'closed':
+    case 'weekend':
+    case 'holiday':
+      return CLOSED_MARKET_REFRESH_INTERVAL_MS;
+    default:
+      return REFRESH_FAILURE_BACKOFF_MS;
+  }
 }
 
 function getIntervalForState(state: MarketClockState['state']): number {
@@ -104,6 +121,17 @@ export function isQuoteCacheEntryStale(
   return now.getTime() >= expiresAt.getTime();
 }
 
+function isRefreshBlocked(entry: CachedQuoteEntry | null, now: Date): boolean {
+  if (!entry?.retryAfterAt) {
+    return false;
+  }
+  const retryAfterAt = new Date(entry.retryAfterAt);
+  if (Number.isNaN(retryAfterAt.getTime())) {
+    return false;
+  }
+  return now.getTime() < retryAfterAt.getTime();
+}
+
 export function createUnavailableQuote(market: MarketDefinition, providerId: string): MarketQuote {
   return createMarketQuote({
     marketId: market.id,
@@ -126,6 +154,7 @@ export function getCacheEntryByMarketId(cache: QuoteCacheState, marketId: string
 
 export class MarketQuoteCacheService {
   private readonly inFlight = new Map<string, Promise<QuoteRefreshResult>>();
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly storage: ExtensionStorageController,
@@ -138,6 +167,15 @@ export class MarketQuoteCacheService {
 
   getEntry(marketId: string): CachedQuoteEntry | null {
     return getCacheEntryByMarketId(this.getSnapshot(), marketId);
+  }
+
+  private enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.writeQueue.then(task, task);
+    this.writeQueue = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
   }
 
   isStale(marketId: string, marketState: MarketClockState, now: Date): boolean {
@@ -226,6 +264,16 @@ export class MarketQuoteCacheService {
 
         const currentEntry = this.getEntry(market.id);
         const stale = isQuoteCacheEntryStale(currentEntry, state, options.now);
+        if (currentEntry && isRefreshBlocked(currentEntry, options.now)) {
+          return {
+            marketId: market.id,
+            status: stale ? 'cached' : 'skipped',
+            quote: currentEntry.quote,
+            entry: currentEntry,
+            stale,
+            error: null,
+          } satisfies QuoteRefreshResult;
+        }
         if (!stale) {
           return {
             marketId: market.id,
@@ -297,15 +345,18 @@ export class MarketQuoteCacheService {
         fetchedAt,
         providerTimestamp: quote.asOf,
         expiresAt,
+        retryAfterAt: null,
         providerId: options.provider.id,
       };
 
-      const current = this.getSnapshot();
-      const nextQuotes = current.quotes.filter((candidate) => candidate.marketId !== options.market.id);
-      nextQuotes.push(entry);
-      await this.storage.setQuoteCache({
-        quotes: nextQuotes,
-        lastSuccessfulRefreshAt: fetchedAt,
+      await this.enqueueWrite(async () => {
+        const current = this.getSnapshot();
+        const nextQuotes = current.quotes.filter((candidate) => candidate.marketId !== options.market.id);
+        nextQuotes.push(entry);
+        await this.storage.setQuoteCache({
+          quotes: nextQuotes,
+          lastSuccessfulRefreshAt: fetchedAt,
+        });
       });
 
       return {
@@ -319,24 +370,57 @@ export class MarketQuoteCacheService {
     } catch (error) {
       if (error instanceof MarketDataError) {
         const marketDataError = error;
-        if (options.currentEntry) {
-          return {
-            marketId: options.market.id,
-            status: 'failed',
-            quote: options.currentEntry.quote,
-            entry: options.currentEntry,
-            stale: true,
-            error: marketDataError,
-          };
-        }
+      if (options.currentEntry) {
+        const retryAfterAt = new Date(options.now.getTime() + getFailureBackoffForState(options.marketState.state)).toISOString();
+        const failedEntry: CachedQuoteEntry = {
+          ...options.currentEntry,
+          retryAfterAt,
+        };
+        await this.enqueueWrite(async () => {
+          const current = this.getSnapshot();
+          const nextQuotes = current.quotes.filter((candidate) => candidate.marketId !== options.market.id);
+          nextQuotes.push(failedEntry);
+          await this.storage.setQuoteCache({
+            quotes: nextQuotes,
+            lastSuccessfulRefreshAt: current.lastSuccessfulRefreshAt,
+          });
+        });
         return {
           marketId: options.market.id,
           status: 'failed',
-          quote: createUnavailableQuote(options.market, options.provider.id),
-          entry: null,
+          quote: options.currentEntry.quote,
+          entry: failedEntry,
           stale: true,
           error: marketDataError,
         };
+      }
+      const retryAfterAt = new Date(options.now.getTime() + getFailureBackoffForState(options.marketState.state)).toISOString();
+      const unavailableEntry: CachedQuoteEntry = {
+        marketId: options.market.id,
+        quote: createUnavailableQuote(options.market, options.provider.id),
+        fetchedAt: options.now.toISOString(),
+        providerTimestamp: null,
+        expiresAt: retryAfterAt,
+        retryAfterAt,
+        providerId: options.provider.id,
+      };
+      await this.enqueueWrite(async () => {
+        const current = this.getSnapshot();
+        const nextQuotes = current.quotes.filter((candidate) => candidate.marketId !== options.market.id);
+        nextQuotes.push(unavailableEntry);
+        await this.storage.setQuoteCache({
+          quotes: nextQuotes,
+          lastSuccessfulRefreshAt: current.lastSuccessfulRefreshAt,
+        });
+      });
+      return {
+        marketId: options.market.id,
+        status: 'failed',
+        quote: createUnavailableQuote(options.market, options.provider.id),
+        entry: unavailableEntry,
+        stale: true,
+        error: marketDataError,
+      };
       }
 
       const fallbackError = new MarketDataError(

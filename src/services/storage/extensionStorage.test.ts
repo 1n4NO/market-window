@@ -87,6 +87,7 @@ describe('extension storage', () => {
               provider: 'demo',
             },
             fetchedAt: 'invalid',
+            retryAfterAt: 'invalid',
           },
         ],
         lastSuccessfulRefreshAt: 1234,
@@ -194,13 +195,14 @@ describe('extension storage', () => {
 
     await controller.setQuoteCache({
       quotes: [
-        {
-          marketId: 'nse',
-          fetchedAt: '2026-08-02T10:00:00.000Z',
-          providerTimestamp: '2026-08-02T09:59:00.000Z',
-          expiresAt: '2026-08-02T10:15:00.000Z',
-          providerId: 'demo',
-          quote: {
+          {
+            marketId: 'nse',
+            fetchedAt: '2026-08-02T10:00:00.000Z',
+            providerTimestamp: '2026-08-02T09:59:00.000Z',
+            expiresAt: '2026-08-02T10:15:00.000Z',
+            retryAfterAt: null,
+            providerId: 'demo',
+            quote: {
             marketId: 'nse',
             symbol: 'NSE:NIFTY',
             indexName: 'NIFTY 50',

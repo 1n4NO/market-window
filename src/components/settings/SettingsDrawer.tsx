@@ -21,6 +21,7 @@ import { Card } from '../layout/Card';
 import { IconButton } from '../layout/IconButton';
 import { classNames } from '../../utils/classNames';
 import { useExtensionStorage } from '../../hooks/useExtensionStorage';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { createDefaultSettings } from '../../services/storage/extensionStorage';
 import {
   MARKET_DATA_PROVIDERS,
@@ -164,6 +165,7 @@ export function SettingsDrawer({
   const [symbolValidationResults, setSymbolValidationResults] = useState<SymbolValidationResult[]>([]);
   const [quickLinkErrorIds, setQuickLinkErrorIds] = useState<string[]>([]);
   const quoteCacheService = useMemo(() => createMarketQuoteCacheService(controller, MARKET_DATA_PROVIDERS), [controller]);
+  const isOnline = useOnlineStatus();
 
   const settings = snapshot.settings;
   const defaultSettings = useMemo(() => createDefaultSettings(), []);
@@ -404,6 +406,10 @@ export function SettingsDrawer({
   }
 
   async function refreshNow(): Promise<void> {
+    if (!isOnline) {
+      setStatus('Offline: cached quotes remain visible until connection returns.');
+      return;
+    }
     const refreshResults = await quoteCacheService.refreshQuotes({
       markets: enabledMarkets,
       marketStates,
@@ -978,8 +984,13 @@ export function SettingsDrawer({
                           <p className="mt-1 text-sm leading-6 text-[color:var(--mw-text-secondary)]">
                             Fetch market quotes immediately using the selected provider and the current symbol overrides.
                           </p>
+                          {!isOnline ? (
+                            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[color:var(--mw-text-muted)]">
+                              Offline mode: local market clocks and cached quotes stay available.
+                            </p>
+                          ) : null}
                         </div>
-                        <IconButton onClick={() => void refreshNow()} type="button">
+                        <IconButton disabled={!isOnline} onClick={() => void refreshNow()} type="button">
                           <RefreshCw className="h-4 w-4" />
                           Refresh now
                         </IconButton>

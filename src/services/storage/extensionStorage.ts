@@ -14,6 +14,7 @@ export interface CachedQuoteEntry {
   fetchedAt: string;
   providerTimestamp: string | null;
   expiresAt: string | null;
+  retryAfterAt: string | null;
   providerId: string;
 }
 
@@ -335,6 +336,7 @@ function normalizeQuoteEntry(value: unknown): CachedQuoteEntry | null {
     ? value.providerTimestamp
     : quote.asOf;
   const expiresAt = isString(value.expiresAt) || value.expiresAt === null ? value.expiresAt : null;
+  const retryAfterAt = isString(value.retryAfterAt) || value.retryAfterAt === null ? value.retryAfterAt : null;
   const providerId = isNonEmptyString(value.providerId) ? value.providerId : quote.provider;
   if (!isNonEmptyString(providerId)) {
     return null;
@@ -342,11 +344,12 @@ function normalizeQuoteEntry(value: unknown): CachedQuoteEntry | null {
 
   return {
     marketId: value.marketId,
-    fetchedAt: value.fetchedAt,
-    providerTimestamp: providerTimestamp ?? null,
-    expiresAt,
-    providerId,
-    quote: {
+      fetchedAt: value.fetchedAt,
+      providerTimestamp: providerTimestamp ?? null,
+      expiresAt,
+      retryAfterAt,
+      providerId,
+      quote: {
       marketId: quote.marketId,
       symbol: quote.symbol,
       indexName: quote.indexName,
