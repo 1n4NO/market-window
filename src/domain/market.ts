@@ -72,6 +72,7 @@ export interface MarketClockState {
   millisecondsUntilTransition: number | null;
   activeSession: SessionDefinition | null;
   nextSession: SessionDefinition | null;
+  nextAction: string | null;
 }
 
 export interface MarketQuote {
