@@ -178,7 +178,7 @@ function MarketSparkline({
     <div className="flex flex-col items-end gap-1">
       <svg
         aria-label={`Intraday sparkline from ${formatCompactValue(start)} to ${formatCompactValue(end)}`}
-        className="h-[42px] w-[118px] shrink-0"
+        className="h-[40px] w-[108px] shrink-0"
         viewBox="0 0 110 40"
         fill="none"
         role="img"
@@ -222,11 +222,11 @@ export function MarketCard({
     <Card
       as="article"
       aria-label={`${card.market.exchangeCode} ${card.market.indexName} market card`}
-      className="h-[309px] overflow-hidden p-4 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-0.5 hover:border-[color:var(--mw-border-strong)] hover:shadow-[var(--mw-shadow-lift)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--mw-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--mw-page)]"
+      className="relative h-[318px] overflow-hidden p-4 transition-[transform,box-shadow,border-color] duration-150 ease-out hover:-translate-y-0.5 hover:border-[color:var(--mw-border-strong)] hover:shadow-[var(--mw-shadow-lift)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--mw-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--mw-page)]"
       tabIndex={0}
     >
       <div className="flex h-full flex-col">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 pr-20">
           <div className="flex min-w-0 items-start gap-3">
             <span className="flex h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full border border-[color:var(--mw-border)] bg-[color:var(--mw-panel-inset)] shadow-[var(--mw-shadow-inset)]">
               <MarketFlagIcon marketId={card.market.id} className="h-full w-full" />
@@ -238,25 +238,26 @@ export function MarketCard({
                   ({countryLabelMap[card.market.id] ?? card.market.country})
                 </span>
               </p>
-              <div className="mt-1">
-                <StatusBadge tone={stateTone}>{getStateBadgeLabel(card)}</StatusBadge>
-              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="pointer-events-none absolute right-4 top-4">
+          <StatusBadge tone={stateTone}>{getStateBadgeLabel(card)}</StatusBadge>
+        </div>
+
+        <div className="mt-3">
           <h3 className="truncate text-[18px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--mw-text)]">
             {card.market.indexName}
           </h3>
-          <div className="mt-3">
-            <p className="text-[32px] font-semibold leading-none tracking-[-0.04em] tabular-nums text-[color:var(--mw-text)]">
+          <div className="mt-2.5">
+            <p className="text-[31px] font-semibold leading-none tracking-[-0.04em] tabular-nums text-[color:var(--mw-text)]">
               {hasQuoteValue ? card.valueLabel : '—'}
             </p>
             {hasQuoteValue ? (
               <p
                 className={classNames(
-                  'mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[16px] font-medium tabular-nums',
+                  'mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[16px] font-medium tabular-nums',
                   card.valueTone === 'positive'
                     ? 'text-[color:var(--mw-positive)]'
                     : card.valueTone === 'negative'
@@ -271,16 +272,20 @@ export function MarketCard({
           </div>
         </div>
 
-        <div className="mt-3 min-h-[96px]">
-          <div className="flex items-center justify-between gap-2">
+        <div className="mt-2 min-h-[84px]">
+          <div className="relative pr-20">
             <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--mw-text-muted)]">Latest quote</p>
-            {card.demoLabel ? <StatusBadge tone="accent">DEMO</StatusBadge> : null}
+            {card.demoLabel ? (
+              <div className="pointer-events-none absolute right-0 top-[-2px]">
+                <StatusBadge tone="accent">DEMO</StatusBadge>
+              </div>
+            ) : null}
           </div>
           {hasQuoteValue ? (
-            <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_118px] gap-3">
+            <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_126px] gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
-                  <p className="text-[16px] font-medium leading-none tabular-nums text-[color:var(--mw-text-secondary)]">
+                  <p className="text-[15px] font-medium leading-none tabular-nums text-[color:var(--mw-text-secondary)]">
                     {closeValue ?? 'Unavailable'}
                   </p>
                   {hasSeries ? null : (
@@ -288,7 +293,7 @@ export function MarketCard({
                   )}
                 </div>
                 {card.quote?.dayHigh !== undefined || card.quote?.dayLow !== undefined ? (
-                  <div className="mt-2 flex items-center gap-3 text-[11px] leading-4 text-[color:var(--mw-text-muted)]">
+                  <div className="mt-1.5 flex items-center gap-3 text-[11px] leading-4 text-[color:var(--mw-text-muted)]">
                     {card.quote?.dayHigh !== undefined && card.quote?.dayHigh !== null ? (
                       <span className="whitespace-nowrap">
                         High <span className="text-[color:var(--mw-text-secondary)]">{formatCompactValue(card.quote.dayHigh)}</span>
@@ -302,7 +307,7 @@ export function MarketCard({
                   </div>
                 ) : null}
                 {hasSeries ? (
-                  <p className="mt-2 text-[12px] leading-4 text-[color:var(--mw-text-muted)]">{card.localDisplayTimestampLabel}</p>
+                  <p className="mt-1.5 text-[12px] leading-4 text-[color:var(--mw-text-muted)]">{card.localDisplayTimestampLabel}</p>
                 ) : null}
               </div>
               <div className="flex justify-end">
@@ -316,21 +321,18 @@ export function MarketCard({
               </div>
             </div>
           ) : (
-            <div className="mt-1.5 flex min-h-[54px] items-start">
+            <div className="mt-1.5 flex min-h-[44px] items-start">
               <p className="text-[13px] leading-4 text-[color:var(--mw-text-muted)]">Unavailable</p>
             </div>
           )}
         </div>
 
-        <div className="mt-auto border-t border-[color:rgba(255,255,255,0.08)] pt-3">
-          <div className="flex h-[98px] flex-col justify-start gap-[4px]">
-            <p className="whitespace-nowrap text-[13px] font-medium leading-[1.35] text-[color:var(--mw-text-secondary)]">
-              Next session
+        <div className="mt-auto border-t border-[color:rgba(255,255,255,0.08)] pt-2.5">
+          <div className="flex h-[66px] flex-col justify-start gap-[1px]">
+            <p className="whitespace-nowrap text-[12px] font-medium leading-[1.3] text-[color:var(--mw-text-secondary)]">
+              Next session · <span className="text-[18px] font-semibold leading-[1.1] text-[color:var(--mw-market-us)]">{transitionLabel}</span>
             </p>
-            <p className="whitespace-nowrap text-[18px] font-semibold leading-[1.15] text-[color:var(--mw-market-us)]">
-              {transitionLabel}
-            </p>
-            <p className="whitespace-nowrap text-[11px] font-normal uppercase tracking-[0.08em] leading-[1.35] text-[color:var(--mw-text-muted)]/60">
+            <p className="whitespace-nowrap text-[11px] font-normal uppercase tracking-[0.08em] leading-[1.25] text-[color:var(--mw-text-muted)]/60">
               {sessionLabel}
             </p>
           </div>

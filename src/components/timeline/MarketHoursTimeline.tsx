@@ -257,10 +257,10 @@ export function MarketHoursTimeline({
           {hasProjectedSessions ? <p className="text-[11px] text-[color:var(--mw-text-muted)]">Weekend projection</p> : null}
         </div>
 
-        <div className="grid flex-1 min-h-0 gap-6 min-[1050px]:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="min-w-0 flex min-h-0 flex-col">
-            <div className="relative flex min-h-0 flex-1 flex-col">
-              <div className="grid grid-cols-[repeat(9,minmax(0,1fr))] border-b border-[color:rgba(147,166,197,0.10)] pb-1.5 text-[11px] leading-none text-[color:var(--mw-text-muted)]">
+          <div className="grid flex-1 min-h-0 gap-6 min-[1050px]:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 flex min-h-0 flex-col">
+              <div className="relative flex min-h-0 flex-1 flex-col">
+                <div className="grid grid-cols-[repeat(9,minmax(0,1fr))] border-b border-[color:rgba(147,166,197,0.10)] pb-1.5 text-[11px] leading-none text-[color:var(--mw-text-muted)]">
                 {hourScaleHours.map((hour) => {
                   const normalized = hour % 24;
                   let label = '12 AM';
@@ -279,17 +279,14 @@ export function MarketHoursTimeline({
                 })}
               </div>
 
-              <div className="relative mt-2 flex-1 min-h-0 pb-5">
+              <div className="relative mt-2 flex-1 min-h-0 pb-8">
                 <div
                   aria-label={`Current local time marker at ${currentTimeLabel}`}
-                  className="pointer-events-none absolute top-0 bottom-5 z-20 w-px bg-[color:#f25f63] shadow-[0_0_0_1px_rgba(242,95,99,0.4)]"
+                  className="pointer-events-none absolute top-0 bottom-[26px] z-20 w-px bg-[color:#f25f63] shadow-[0_0_0_1px_rgba(242,95,99,0.4)]"
                   role="img"
                   style={{ left: `${model.currentMarkerLeftPercent}%` }}
                 >
                   <span className="absolute -top-1.5 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[color:#f25f63] shadow-[0_0_0_2px_rgba(242,95,99,0.18)]" />
-                  <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium leading-none text-[color:#f9a1a4]">
-                    {currentTimeLabel}
-                  </span>
                 </div>
 
                 <div className="space-y-1.5 pt-1">
@@ -364,6 +361,9 @@ export function MarketHoursTimeline({
                     <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>Hover over a session to see details.</span>
                   </div>
+                  <p className="whitespace-nowrap text-[10px] font-medium leading-none text-[color:#f25f63]">
+                    {currentTimeLabel}
+                  </p>
                 </div>
               </div>
             </div>

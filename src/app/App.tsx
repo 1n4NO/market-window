@@ -16,6 +16,8 @@ import { MarketSummaryPanel, QuickLinksPanel, UpcomingTransitionsPanel } from '.
 import { MarketHoursTimeline } from '../components/timeline/MarketHoursTimeline';
 import { createBundledHolidayProvider } from '../services/holidayProvider/holidayProvider';
 import { buildMarketDashboardModel } from '../services/marketDashboard/marketDashboard';
+import { MARKET_DATA_PROVIDERS, createMarketQuoteCacheService, resolveActiveMarketDataProviderId } from '../services/marketData';
+import type { MarketClockState } from '../domain/market';
 import { classNames } from '../utils/classNames';
 
 const SETTINGS_AVAILABLE_SECTIONS = ['provider', 'appearance', 'quick-links', 'data'] as const;
@@ -103,11 +105,13 @@ function isEditableElement(target: EventTarget | null): boolean {
 }
 
 export function App() {
-  const { snapshot } = useExtensionStorage();
+  const { controller, snapshot } = useExtensionStorage();
   const [now, setNow] = useState(() => new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editMarketsOpen, setEditMarketsOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const marketStatesRef = useRef<Record<string, MarketClockState>>({});
+  const quoteCacheService = useMemo(() => createMarketQuoteCacheService(controller, MARKET_DATA_PROVIDERS), [controller]);
   const holidayProvider = useMemo(() => createBundledHolidayProvider(HOLIDAY_CALENDARS), []);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -135,8 +139,12 @@ export function App() {
   const appearance = settings.appearance;
   const greeting = getGreeting(now.getHours());
   const greetingLabel = `${greeting} 👋`;
-  const enabledMarkets = MARKET_DEFINITIONS.filter((market) => settings.enabledMarketIds.includes(market.id)).sort(
-    (left, right) => settings.marketOrder.indexOf(left.id) - settings.marketOrder.indexOf(right.id),
+  const enabledMarkets = useMemo(
+    () =>
+      MARKET_DEFINITIONS.filter((market) => settings.enabledMarketIds.includes(market.id)).sort(
+        (left, right) => settings.marketOrder.indexOf(left.id) - settings.marketOrder.indexOf(right.id),
+      ),
+    [settings.enabledMarketIds, settings.marketOrder],
   );
   const marketStates = useMarketClockStates({
     markets: enabledMarkets,
@@ -148,6 +156,10 @@ export function App() {
     (typeof snapshot.quoteCache.quotes)[number] | null
   >;
   const hasApiKey = Boolean(snapshot.settings.dataProvider.apiKey?.trim());
+  const activeProviderId = resolveActiveMarketDataProviderId(
+    snapshot.settings.dataProvider.providerId,
+    snapshot.settings.dataProvider.apiKey,
+  );
   const hasDemoQuotes = snapshot.quoteCache.quotes.some((entry) => entry.quote.dataState === 'mock');
   const usingDemoData = !hasApiKey || hasDemoQuotes;
   const providerLabel = usingDemoData
@@ -161,6 +173,18 @@ export function App() {
   const shellDensity = 'gap-[14px]';
   const pagePadding = 'px-[24px] py-[22px]';
   const viewerTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const marketStatesReady = enabledMarkets.length > 0 && enabledMarkets.every((market) => marketStates[market.id] !== undefined);
+  const refreshSignature = useMemo(() => {
+    const overrideSignature = enabledMarkets
+      .map((market) => `${market.id}:${settings.providerSymbolOverrides[market.id]?.[activeProviderId] ?? ''}`)
+      .join('|');
+    return [
+      activeProviderId,
+      settings.dataProvider.apiKey ?? '',
+      enabledMarkets.map((market) => market.id).join(','),
+      overrideSignature,
+    ].join('::');
+  }, [activeProviderId, enabledMarkets, settings.dataProvider.apiKey, settings.providerSymbolOverrides]);
   const dashboardModel = useMemo(
     () =>
       buildMarketDashboardModel({
@@ -173,6 +197,33 @@ export function App() {
       }),
     [enabledMarkets, marketStates, quoteEntries, now, viewerTimeZone, providerLabel],
   );
+
+  useEffect(() => {
+    marketStatesRef.current = marketStates;
+  }, [marketStates]);
+
+  useEffect(() => {
+    if (enabledMarkets.length === 0 || !marketStatesReady) {
+      return;
+    }
+
+    void quoteCacheService.refreshQuotes({
+      markets: enabledMarkets,
+      marketStates: marketStatesRef.current,
+      providerId: activeProviderId,
+      apiKey: settings.dataProvider.apiKey ?? '',
+      now: new Date(),
+      overrides: settings.providerSymbolOverrides,
+    });
+  }, [
+    activeProviderId,
+    enabledMarkets,
+    marketStatesReady,
+    quoteCacheService,
+    refreshSignature,
+    settings.dataProvider.apiKey,
+    settings.providerSymbolOverrides,
+  ]);
 
   return (
     <main className="min-h-screen overflow-x-hidden text-[color:var(--mw-text)]">

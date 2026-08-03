@@ -516,7 +516,7 @@ export function SettingsDrawer({
       <div className="absolute inset-0" onClick={onClose} />
       <div
         ref={drawerRef}
-        aria-label="Settings"
+        aria-label={title}
         aria-modal="true"
         className="relative z-10 flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-[color:var(--mw-border)] bg-[color:var(--mw-page)] shadow-[var(--mw-shadow-card)]"
         role="dialog"
@@ -529,7 +529,7 @@ export function SettingsDrawer({
             </h2>
             <p className="max-w-2xl text-sm leading-6 text-[color:var(--mw-text-secondary)]">{description}</p>
           </div>
-          <IconButton ref={closeButtonRef} aria-label="Close settings" onClick={onClose} tone="subtle" type="button">
+          <IconButton ref={closeButtonRef} aria-label={`Close ${title}`} onClick={onClose} tone="subtle" type="button">
             <X className="h-4 w-4" />
           </IconButton>
         </div>

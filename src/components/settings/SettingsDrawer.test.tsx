@@ -291,7 +291,7 @@ describe('SettingsDrawer', () => {
 
     render(<TestHarness initialSection="markets" />);
 
-    await user.click(screen.getByRole('button', { name: 'Close settings' }));
+    await user.click(screen.getByRole('button', { name: 'Close Settings' }));
 
     await waitFor(() => {
       expect(trigger).toHaveFocus();

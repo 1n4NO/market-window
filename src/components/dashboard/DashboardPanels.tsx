@@ -112,6 +112,11 @@ export function MarketSummaryPanel({
   summary: MarketSummaryModel;
 }) {
   const closedPercent = Math.max(0, Math.min(100, summary.closedPercentage));
+  const donutSize = 82;
+  const donutStroke = 10;
+  const donutRadius = 31;
+  const donutCircumference = 2 * Math.PI * donutRadius;
+  const donutOffset = donutCircumference * (1 - closedPercent / 100);
   return (
     <Card className="flex h-[228px] flex-col p-4">
       <div className="flex items-center gap-2">
@@ -126,24 +131,43 @@ export function MarketSummaryPanel({
         <Metric label="Total" value={summary.total} tone="neutral" />
       </div>
 
-      <div className="mt-3 grid flex-1 items-center gap-3 md:grid-cols-[auto_minmax(0,1fr)]">
+      <div className="mt-2.5 grid flex-1 items-center gap-2.5 md:grid-cols-[auto_minmax(0,1fr)]">
         <div
           aria-label={`Closed markets represent ${closedPercent}% of enabled markets`}
-          className="relative flex h-[90px] w-[90px] shrink-0 items-center justify-center rounded-full border border-[color:rgba(147,166,197,0.12)] bg-[color:var(--mw-panel-inset)]"
-          style={{
-            background: `conic-gradient(var(--mw-negative) 0 ${closedPercent}%, rgba(255,255,255,0.04) ${closedPercent}% 100%)`,
-          }}
+          className="relative flex h-[82px] w-[82px] shrink-0 items-center justify-center"
         >
-          <div className="flex h-[60px] w-[60px] items-center justify-center rounded-full border border-[color:rgba(147,166,197,0.12)] bg-[color:var(--mw-panel)] text-center">
+          <svg aria-hidden="true" className="absolute inset-0 h-full w-full" viewBox="0 0 82 82">
+            <circle
+              cx="41"
+              cy="41"
+              fill="none"
+              r={donutRadius}
+              stroke="rgba(147,166,197,0.12)"
+              strokeWidth={donutStroke}
+            />
+            <circle
+              cx="41"
+              cy="41"
+              fill="none"
+              r={donutRadius}
+              stroke="var(--mw-negative)"
+              strokeDasharray={`${donutCircumference} ${donutCircumference}`}
+              strokeDashoffset={donutOffset}
+              strokeLinecap="butt"
+              strokeWidth={donutStroke}
+              transform="rotate(-90 41 41)"
+            />
+          </svg>
+          <div className="relative z-10 flex h-[54px] w-[54px] items-center justify-center rounded-full border border-[color:rgba(147,166,197,0.12)] bg-[color:var(--mw-panel)] text-center">
             <div>
-              <p className="text-[17px] font-semibold leading-none text-[color:var(--mw-text)]">{closedPercent}%</p>
+              <p className="text-[16px] font-semibold leading-none text-[color:var(--mw-text)]">{closedPercent}%</p>
               <p className="mt-0.5 text-[9px] uppercase tracking-[0.12em] text-[color:var(--mw-text-muted)]">closed</p>
             </div>
           </div>
         </div>
 
-        <div className="min-w-0 space-y-1">
-          <p className="text-[16px] font-medium leading-5 text-[color:var(--mw-text)]">
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-[15px] font-medium leading-5 text-[color:var(--mw-text)]">
             {closedPercent}% of tracked markets are closed.
           </p>
           <p className="text-[13px] leading-5 text-[color:var(--mw-text-secondary)]">
@@ -179,7 +203,7 @@ function Metric({
   return (
     <div className="min-w-0 px-2 first:pl-0 last:pr-0 sm:border-l sm:border-[color:var(--mw-border)] sm:first:border-l-0 sm:first:pl-0 sm:pl-3">
       <p className="text-[9px] uppercase tracking-[0.11em] text-[color:var(--mw-text-muted)]">{label}</p>
-      <p className={`mt-1 text-[32px] font-semibold leading-none tabular-nums ${toneClass}`}>{value}</p>
+      <p className={`mt-1 text-[31px] font-semibold leading-none tabular-nums ${toneClass}`}>{value}</p>
     </div>
   );
 }
