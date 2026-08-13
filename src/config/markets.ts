@@ -8,7 +8,7 @@ export const MARKET_DEFINITIONS = [
     id: 'nse',
     exchangeCode: 'NSE',
     country: 'India',
-    indexName: 'NIFTY 50',
+    indexName: 'SENSEX',
     timezone: 'Asia/Kolkata',
     colorToken: 'market-india',
     iconId: 'flag-in',
@@ -25,12 +25,14 @@ export const MARKET_DEFINITIONS = [
     providerSymbols: [
       {
         providerId: 'twelvedata',
-        symbol: 'NSE:NIFTY',
+        symbol: 'BSESN',
         isDefault: true,
+        fallbackSymbols: ['SENSEX1', 'SENSEXETF', 'INDA'],
+        notes: 'Prefer the direct S&P BSE Sensex index, then local INR fallback symbols on Twelve Data.',
       },
       {
         providerId: 'mock',
-        symbol: 'NIFTY 50',
+        symbol: 'SENSEX',
       },
     ],
   },
@@ -65,6 +67,8 @@ export const MARKET_DEFINITIONS = [
         providerId: 'twelvedata',
         symbol: 'N225',
         isDefault: true,
+        fallbackSymbols: ['1320', '1330'],
+        notes: 'Prefer the direct Nikkei 225 index, then local JPY fallback symbols on Twelve Data.',
       },
       {
         providerId: 'mock',
@@ -93,8 +97,10 @@ export const MARKET_DEFINITIONS = [
     providerSymbols: [
       {
         providerId: 'twelvedata',
-        symbol: 'UKX',
+        symbol: 'FTSE',
         isDefault: true,
+        fallbackSymbols: ['HUKX', 'S100'],
+        notes: 'Prefer the direct FTSE 100 index, then local GBP fallback symbols on Twelve Data.',
       },
       {
         providerId: 'mock',
@@ -125,6 +131,8 @@ export const MARKET_DEFINITIONS = [
         providerId: 'twelvedata',
         symbol: 'SPX',
         isDefault: true,
+        fallbackSymbols: ['SPY'],
+        notes: 'Prefer the direct S&P 500 index, then local USD fallback symbols on Twelve Data.',
       },
       {
         providerId: 'mock',
@@ -163,6 +171,8 @@ export const MARKET_DEFINITIONS = [
         providerId: 'twelvedata',
         symbol: 'HSI',
         isDefault: true,
+        fallbackSymbols: ['2800'],
+        notes: 'Prefer the direct Hang Seng index, then local HKD fallback symbols on Twelve Data.',
       },
       {
         providerId: 'mock',
@@ -191,8 +201,10 @@ export const MARKET_DEFINITIONS = [
     providerSymbols: [
       {
         providerId: 'twelvedata',
-        symbol: 'DAX',
+        symbol: 'GDAXI',
         isDefault: true,
+        fallbackSymbols: ['EXS1', 'DAXEX'],
+        notes: 'Prefer the direct DAX index, then local EUR fallback symbols on Twelve Data.',
       },
       {
         providerId: 'mock',

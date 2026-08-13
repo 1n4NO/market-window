@@ -87,6 +87,7 @@ export interface SessionDefinition {
 export interface ProviderSymbol {
   providerId: string;
   symbol: string;
+  fallbackSymbols?: string[];
   isDefault?: boolean;
   notes?: string;
 }

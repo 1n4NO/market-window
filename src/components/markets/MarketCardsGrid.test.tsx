@@ -46,7 +46,7 @@ function createQuoteEntry(input: {
 }): CachedQuoteEntry {
   const quote = createMarketQuote({
     marketId: input.market.id,
-    symbol: `${input.market.exchangeCode}:${input.market.id.toUpperCase()}`,
+      symbol: `${input.market.exchangeCode}:${input.market.id.toUpperCase()}`,
     indexName: input.market.indexName,
     value: input.value,
     previousClose: input.previousClose,
@@ -147,7 +147,7 @@ describe('MarketCardsGrid', () => {
 
     const { container } = render(<MarketCardsGrid cards={dashboard.cards} now={now} />);
 
-    expect(screen.getByRole('article', { name: 'NSE NIFTY 50 market card' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'NSE SENSEX market card' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'TSE Nikkei 225 market card' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'LSE FTSE 100 market card' })).toBeInTheDocument();
     expect(screen.getByRole('article', { name: 'NYSE S&P 500 market card' })).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe('MarketCardsGrid', () => {
     expect(screen.getByText('+0.38%')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.getByText('Unavailable')).toBeInTheDocument();
-    expect(screen.getAllByText('Next session').length).toBe(6);
+    expect(screen.getAllByText(/Next session/i).length).toBe(6);
     expect(container.querySelectorAll('article svg')).toHaveLength(6);
     expect(screen.queryByText('IN')).not.toBeInTheDocument();
     expect(screen.queryByText('Latest session information')).not.toBeInTheDocument();
@@ -177,6 +177,6 @@ describe('MarketCardsGrid', () => {
     expect(screen.getByText('DEMO')).toBeInTheDocument();
 
     await user.tab();
-    expect(screen.getByRole('article', { name: 'NSE NIFTY 50 market card' })).toHaveFocus();
+    expect(screen.getByRole('article', { name: 'NSE SENSEX market card' })).toHaveFocus();
   });
 });

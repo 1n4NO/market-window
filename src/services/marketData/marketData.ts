@@ -61,6 +61,27 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function normalizeSymbolList(symbols: readonly string[] | undefined): string[] {
+  if (!symbols) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const candidate of symbols) {
+    if (!isNonEmptyString(candidate)) {
+      continue;
+    }
+    const normalized = candidate.trim();
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result;
+}
+
 export function parseNumericValue(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -144,14 +165,26 @@ export function resolveMarketProviderSymbol(
   providerId: string,
   overrides?: ProviderSymbolOverrideMap,
 ): string | null {
+  return resolveMarketProviderSymbolCandidates(market, providerId, overrides)[0] ?? null;
+}
+
+export function resolveMarketProviderSymbolCandidates(
+  market: MarketDefinition,
+  providerId: string,
+  overrides?: ProviderSymbolOverrideMap,
+): string[] {
   const override = overrides?.[market.id]?.[providerId];
   if (isNonEmptyString(override)) {
-    return override.trim();
+    return [override.trim()];
   }
 
   const providerSymbol = market.providerSymbols.find((candidate) => candidate.providerId === providerId && candidate.isDefault)
     ?? market.providerSymbols.find((candidate) => candidate.providerId === providerId);
-  return providerSymbol?.symbol ?? null;
+  if (!providerSymbol) {
+    return [];
+  }
+
+  return normalizeSymbolList([providerSymbol.symbol, ...(providerSymbol.fallbackSymbols ?? [])]);
 }
 
 export function withProviderSymbolOverride(
@@ -166,6 +199,7 @@ export function withProviderSymbolOverride(
     providerId,
     symbol,
     isDefault: true,
+    fallbackSymbols: matching?.fallbackSymbols,
     notes: matching?.notes,
   };
 

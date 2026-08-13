@@ -88,6 +88,31 @@ export function validateProviderSymbol(value: unknown, path = 'providerSymbols[0
   if (!isNonEmptyString(value.symbol)) {
     errors.push({ path: `${path}.symbol`, message: 'symbol must be a non-empty string.' });
   }
+  if ('fallbackSymbols' in value) {
+    if (!Array.isArray(value.fallbackSymbols)) {
+      errors.push({ path: `${path}.fallbackSymbols`, message: 'fallbackSymbols must be an array when present.' });
+    } else {
+      const seen = new Set<string>();
+      value.fallbackSymbols.forEach((candidate: unknown, index: number) => {
+        if (!isNonEmptyString(candidate)) {
+          errors.push({
+            path: `${path}.fallbackSymbols[${index}]`,
+            message: 'fallbackSymbols entries must be non-empty strings.',
+          });
+          return;
+        }
+        const normalized = candidate.trim();
+        if (seen.has(normalized)) {
+          errors.push({
+            path: `${path}.fallbackSymbols[${index}]`,
+            message: 'fallbackSymbols entries must be unique.',
+          });
+          return;
+        }
+        seen.add(normalized);
+      });
+    }
+  }
   if ('isDefault' in value && typeof value.isDefault !== 'boolean') {
     errors.push({ path: `${path}.isDefault`, message: 'isDefault must be a boolean when present.' });
   }

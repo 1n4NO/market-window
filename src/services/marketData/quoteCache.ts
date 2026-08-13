@@ -278,7 +278,9 @@ export class MarketQuoteCacheService {
         const currentEntry = this.getEntry(market.id);
         const shouldForceDemoRefresh =
           provider.id === 'mock' && currentEntry?.quote.dataState !== 'mock';
-        const stale = shouldForceDemoRefresh || isQuoteCacheEntryStale(currentEntry, state, options.now);
+        const shouldForceProviderRefresh =
+          provider.id !== 'mock' && currentEntry?.providerId !== provider.id;
+        const stale = shouldForceDemoRefresh || shouldForceProviderRefresh || isQuoteCacheEntryStale(currentEntry, state, options.now);
         if (currentEntry && isRefreshBlocked(currentEntry, options.now)) {
           return {
             marketId: market.id,

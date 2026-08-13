@@ -73,9 +73,19 @@ function getTimeZoneAbbreviation(now: Date, timeZone: string): string {
   return timeZoneName.replace(/^GMT([+-])/, 'GMT$1');
 }
 
-function getFooterFreshnessLabel(quoteStates: string[], usingDemoData: boolean): string {
-  if (usingDemoData) {
+function getFooterFreshnessLabel(options: {
+  quoteStates: string[];
+  hasApiKey: boolean;
+  activeProviderId: string;
+  quoteProviders: string[];
+}): string {
+  const { quoteStates, hasApiKey, activeProviderId, quoteProviders } = options;
+  if (!hasApiKey || activeProviderId === 'mock') {
     return 'Demo data';
+  }
+
+  if (quoteProviders.some((providerId) => providerId !== activeProviderId)) {
+    return 'Refreshing live data';
   }
 
   if (quoteStates.includes('delayed')) {
@@ -160,8 +170,8 @@ export function App() {
     snapshot.settings.dataProvider.providerId,
     snapshot.settings.dataProvider.apiKey,
   );
-  const hasDemoQuotes = snapshot.quoteCache.quotes.some((entry) => entry.quote.dataState === 'mock');
-  const usingDemoData = !hasApiKey || hasDemoQuotes;
+  const quoteProviders = snapshot.quoteCache.quotes.map((entry) => entry.providerId);
+  const usingDemoData = !hasApiKey || activeProviderId === 'mock';
   const providerLabel = usingDemoData
     ? 'Demo mode'
     : hasApiKey
@@ -169,7 +179,12 @@ export function App() {
         ? 'Twelve Data'
         : snapshot.settings.dataProvider.providerId
       : 'Demo mode';
-  const footerFreshnessLabel = getFooterFreshnessLabel(snapshot.quoteCache.quotes.map((entry) => entry.quote.dataState), usingDemoData);
+  const footerFreshnessLabel = getFooterFreshnessLabel({
+    quoteStates: snapshot.quoteCache.quotes.map((entry) => entry.quote.dataState),
+    hasApiKey,
+    activeProviderId,
+    quoteProviders,
+  });
   const shellDensity = 'gap-[14px]';
   const pagePadding = 'px-[24px] py-[22px]';
   const viewerTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;

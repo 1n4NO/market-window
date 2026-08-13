@@ -17,7 +17,7 @@ describe('TwelveDataMarketDataProvider', () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(
         JSON.stringify({
-          symbol: 'NSE:NIFTY',
+          symbol: 'BSESN',
           close: '24650.50',
           previous_close: '24500.50',
           currency: 'INR',
@@ -30,7 +30,7 @@ describe('TwelveDataMarketDataProvider', () => {
 
     const quote = await provider.fetchQuote(MARKET_DEFINITIONS[0], 'secret');
 
-    expect(quote.symbol).toBe('NSE:NIFTY');
+    expect(quote.symbol).toBe('BSESN');
     expect(quote.provider).toBe('twelvedata');
     expect(quote.value).toBeCloseTo(24650.5);
     expect(quote.previousClose).toBeCloseTo(24500.5);
@@ -54,15 +54,53 @@ describe('TwelveDataMarketDataProvider', () => {
   });
 
   it('rejects unavailable symbols', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ code: 404, status: 'error', message: 'Symbol not found' }), {
+    vi.mocked(fetch).mockImplementation(async () => {
+      return new Response(JSON.stringify({ code: 404, status: 'error', message: 'Symbol not found' }), {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
-      }),
-    );
+      });
+    });
 
     await expect(provider.fetchQuote(MARKET_DEFINITIONS[0], 'secret')).rejects.toMatchObject({
       code: 'symbol_unavailable',
     });
+  });
+
+  it('falls back to the next local candidate when the direct index is unavailable on the plan', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = input instanceof Request ? new URL(input.url) : new URL(String(input));
+      if (url.searchParams.get('symbol') === 'BSESN') {
+        return new Response(
+          JSON.stringify({
+            code: 403,
+            status: 'error',
+            message: 'Symbol is not available with your plan.',
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      if (url.searchParams.get('symbol') === 'SENSEX1') {
+        return new Response(
+          JSON.stringify({
+            symbol: 'SENSEX1',
+            close: '24501.10',
+            previous_close: '24491.10',
+            currency: 'INR',
+            timestamp: 1764579600,
+            is_market_open: true,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      throw new Error(`Unexpected symbol ${url.searchParams.get('symbol')}`);
+    });
+
+    const quote = await provider.fetchQuote(MARKET_DEFINITIONS[0], 'secret');
+
+    expect(quote.symbol).toBe('SENSEX1');
+    expect(quote.currency).toBe('INR');
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
   });
 });

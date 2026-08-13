@@ -26,8 +26,8 @@ describe('quote cache service', () => {
       marketId: 'nse',
       quote: createMarketQuote({
         marketId: 'nse',
-        symbol: 'NSE:NIFTY',
-        indexName: 'NIFTY 50',
+        symbol: 'NSE:BSESN',
+        indexName: 'SENSEX',
         value: 24600,
         previousClose: 24500,
         absoluteChange: 100,
@@ -90,7 +90,7 @@ describe('quote cache service', () => {
     resolveQuote(
       createMarketQuote({
         marketId: market.id,
-        symbol: 'NSE:NIFTY',
+        symbol: 'NSE:BSESN',
         indexName: market.indexName,
         value: 24600,
         previousClose: 24500,
@@ -112,8 +112,8 @@ describe('quote cache service', () => {
   it('preserves a valid cache when refresh fails', async () => {
     const cachedQuote = createMarketQuote({
       marketId: 'nse',
-      symbol: 'NSE:NIFTY',
-      indexName: 'NIFTY 50',
+      symbol: 'NSE:BSESN',
+      indexName: 'SENSEX',
       value: 24600,
       previousClose: 24500,
       absoluteChange: 100,

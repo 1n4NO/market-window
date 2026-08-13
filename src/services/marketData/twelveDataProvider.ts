@@ -4,7 +4,7 @@ import {
   parseNumericValue,
   parseTimestampValue,
   MarketDataError,
-  resolveMarketProviderSymbol,
+  resolveMarketProviderSymbolCandidates,
   type MarketDataProvider,
   type ProviderValidationResult,
 } from './marketData';
@@ -45,11 +45,27 @@ function getErrorCode(body: unknown): number | null {
   return null;
 }
 
-function classifyError(response: Response, body: unknown): MarketDataError {
+function isSymbolPlanError(body: unknown): boolean {
+  const message = getErrorMessage(body)?.toLowerCase() ?? '';
+  return (
+    message.includes('symbol is not available') ||
+    message.includes('not available with your plan') ||
+    message.includes('symbol unavailable') ||
+    message.includes('plan does not include')
+  );
+}
+
+function classifyError(response: Response, body: unknown, context: 'quote' | 'validation' = 'quote'): MarketDataError {
   const message = getErrorMessage(body) ?? response.statusText ?? 'Twelve Data request failed.';
   const code = getErrorCode(body) ?? response.status;
 
-  if (response.status === 401 || response.status === 403 || code === 401 || code === 403) {
+  if (response.status === 403 || code === 403) {
+    if (context === 'quote' && isSymbolPlanError(body)) {
+      return new MarketDataError('symbol_unavailable', message, response.status);
+    }
+    return new MarketDataError('invalid_api_key', message, response.status);
+  }
+  if (response.status === 401 || code === 401) {
     return new MarketDataError('invalid_api_key', message, response.status);
   }
   if (response.status === 429 || code === 429) {
@@ -92,6 +108,24 @@ function determineDataState(body: unknown): MarketQuote['dataState'] {
   return 'unavailable';
 }
 
+function normalizeIntradaySeries(body: unknown): number[] | null {
+  if (!isRecord(body) || !Array.isArray(body.values)) {
+    return null;
+  }
+
+  const series = body.values
+    .map((entry: unknown) => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+      return parseNumericValue(entry.close ?? entry.value ?? entry.price);
+    })
+    .filter((value): value is number => value !== null)
+    .reverse();
+
+  return series.length > 1 ? series : null;
+}
+
 function normalizeMarketQuote(market: MarketDefinition, symbol: string, body: unknown): MarketQuote {
   if (!isRecord(body)) {
     throw new MarketDataError('malformed_payload', 'Twelve Data response was not an object.');
@@ -123,6 +157,10 @@ function normalizeMarketQuote(market: MarketDefinition, symbol: string, body: un
     dataState: determineDataState(body),
     provider: TWELVE_DATA_PROVIDER_ID,
   });
+}
+
+function isIgnorableSeriesError(error: unknown): boolean {
+  return error instanceof MarketDataError && (error.code === 'symbol_unavailable' || error.code === 'malformed_payload');
 }
 
 async function fetchTwelveDataJson(apiKey: string, params: Record<string, string>): Promise<unknown> {
@@ -159,12 +197,46 @@ async function fetchTwelveDataJson(apiKey: string, params: Record<string, string
   return body;
 }
 
+async function fetchTwelveDataTimeSeriesJson(apiKey: string, params: Record<string, string>): Promise<unknown> {
+  const url = new URL(`${TWELVE_DATA_BASE_URL}/time_series`);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  url.searchParams.set('apikey', apiKey);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new MarketDataError('offline', 'Network request failed while contacting Twelve Data.');
+    }
+    throw new MarketDataError('provider_unavailable', 'Failed to contact Twelve Data.');
+  }
+
+  const body = await readJsonResponse(response);
+  if (!response.ok || (isRecord(body) && body.status === 'error')) {
+    throw classifyError(response, body, 'validation');
+  }
+  if (isRecord(body) && typeof body.code === 'number' && body.code >= 400) {
+    throw classifyError(response, body, 'validation');
+  }
+
+  return body;
+}
+
 export class TwelveDataMarketDataProvider implements MarketDataProvider {
   id = TWELVE_DATA_PROVIDER_ID;
 
   capabilities = {
     quotes: true,
-    historicalSeries: false,
+    historicalSeries: true,
     marketMovers: false,
     moverUniverse: 'unsupported',
   } as const;
@@ -202,16 +274,53 @@ export class TwelveDataMarketDataProvider implements MarketDataProvider {
   }
 
   async fetchQuote(market: MarketDefinition, apiKey: string): Promise<MarketQuote> {
-    const symbol = resolveMarketProviderSymbol(market, this.id);
-    if (!symbol) {
+    const symbolCandidates = resolveMarketProviderSymbolCandidates(market, this.id);
+    if (symbolCandidates.length === 0) {
       throw new MarketDataError('symbol_unavailable', `No Twelve Data symbol configured for market "${market.id}".`);
     }
 
-    const body = await fetchTwelveDataJson(apiKey, {
-      symbol,
-      prepost: 'true',
-    });
-    return normalizeMarketQuote(market, symbol, body);
+    let lastError: MarketDataError | null = null;
+    for (const symbol of symbolCandidates) {
+      try {
+        const body = await fetchTwelveDataJson(apiKey, {
+          symbol,
+          prepost: 'true',
+        });
+        const quote = normalizeMarketQuote(market, symbol, body);
+
+        try {
+          const seriesBody = await fetchTwelveDataTimeSeriesJson(apiKey, {
+            symbol,
+            interval: '5min',
+            outputsize: '24',
+          });
+          const intradaySeries = normalizeIntradaySeries(seriesBody);
+          if (intradaySeries && intradaySeries.length > 1) {
+            return {
+              ...quote,
+              intradaySeries,
+            };
+          }
+        } catch (seriesError) {
+          if (!isIgnorableSeriesError(seriesError)) {
+            throw seriesError;
+          }
+        }
+
+        return quote;
+      } catch (error) {
+        if (error instanceof MarketDataError) {
+          lastError = error;
+          if (error.code === 'symbol_unavailable') {
+            continue;
+          }
+          throw error;
+        }
+        throw error;
+      }
+    }
+
+    throw lastError ?? new MarketDataError('symbol_unavailable', `No Twelve Data symbol configured for market "${market.id}".`);
   }
 }
 

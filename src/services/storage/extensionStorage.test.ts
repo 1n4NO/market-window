@@ -75,8 +75,8 @@ describe('extension storage', () => {
             marketId: 'nse',
             quote: {
               marketId: 'nse',
-              symbol: 'NSE:NIFTY',
-              indexName: 'NIFTY 50',
+              symbol: 'NSE:BSESN',
+              indexName: 'SENSEX',
               value: 'invalid',
               previousClose: null,
               absoluteChange: null,
@@ -204,8 +204,8 @@ describe('extension storage', () => {
             providerId: 'demo',
             quote: {
             marketId: 'nse',
-            symbol: 'NSE:NIFTY',
-            indexName: 'NIFTY 50',
+            symbol: 'NSE:BSESN',
+            indexName: 'SENSEX',
             value: 25000,
             previousClose: 24900,
             absoluteChange: 100,

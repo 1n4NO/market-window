@@ -53,8 +53,8 @@ function createProvider(fetchMovers: ReturnType<typeof vi.fn>): MarketDataProvid
     fetchQuote: async () =>
       createMarketQuote({
         marketId: 'nse',
-        symbol: 'NSE:NIFTY',
-        indexName: 'NIFTY 50',
+        symbol: 'NSE:BSESN',
+        indexName: 'SENSEX',
         value: 25000,
         previousClose: 24900,
         absoluteChange: 100,
@@ -71,7 +71,7 @@ function createProvider(fetchMovers: ReturnType<typeof vi.fn>): MarketDataProvid
 function createMoverSnapshot(): MarketMoversSnapshot {
   return {
     marketId: 'nse',
-    indexName: 'NIFTY 50',
+    indexName: 'SENSEX',
     provider: 'movers-demo',
     universe: 'exchange',
     dataState: 'delayed',

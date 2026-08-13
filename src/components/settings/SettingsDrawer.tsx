@@ -215,9 +215,7 @@ export function SettingsDrawer({
     }
 
     restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const frame = window.requestAnimationFrame(() => {
-      closeButtonRef.current?.focus();
-    });
+    closeButtonRef.current?.focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -252,7 +250,6 @@ export function SettingsDrawer({
     document.body.style.overflow = 'hidden';
 
     return () => {
-      window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = '';
       window.requestAnimationFrame(() => {

@@ -112,7 +112,6 @@ export function MarketSummaryPanel({
   summary: MarketSummaryModel;
 }) {
   const closedPercent = Math.max(0, Math.min(100, summary.closedPercentage));
-  const donutSize = 82;
   const donutStroke = 10;
   const donutRadius = 31;
   const donutCircumference = 2 * Math.PI * donutRadius;
